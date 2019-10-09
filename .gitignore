@@ -1,0 +1,9 @@
+# Ignore config files
+conf/uuid.properties
+conf/uuid_app.conf
+
+# Ignore __pycache__ directories in any path
+**/__pycache__
+
+# Ignore log but keep the log directory
+**/*.log
