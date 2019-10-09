@@ -8,16 +8,17 @@ import time
 from contextlib import closing
 import json
 from properties.p import Property #pip install property 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common-api'))
-import string_helper
-from hm_auth import AuthHelper
 from hmdb import DBConn
 import copy
+
+# HuBMAP commons
+import hubmap_commons.string_helper
+from hubmap_commons.hm_auth import AuthHelper
 
 MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
 
-PROP_FILE_NAME = os.path.join(os.path.dirname(__file__), '../conf/uuid.properties') 
+PROP_FILE_NAME = os.path.join(os.path.dirname(__file__), '..', 'conf', 'uuid.properties') 
 DOI_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
 DOI_NUM_CHARS=['2','3','4','5','6','7','8','9']                                                                                   
 HEX_CHARS=['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']

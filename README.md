@@ -24,7 +24,7 @@ export FLASK_ENV=development
 flask run
 ````
 
-This code runs by default on port 5006. You can change the port using a `-p` or `--port` switch at command line. For instance:
+This code runs by default on port 5000. You can change the port using a `-p` or `--port` switch at command line. For instance:
 
 ````
 flask run -p 5001
