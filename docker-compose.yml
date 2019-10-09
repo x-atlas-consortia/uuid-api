@@ -12,12 +12,14 @@ services:
     init: true
     restart: always
     networks:
-      - hubmap
+      - gateway_hubmap
     volumes:
       # Make the uwsgi logging generated on container available through from host
       - "./log:/usr/src/app/log"
       # Mount all config files to container
-      - "./conf.d:/usr/src/app/conf"
+      - "./conf:/usr/src/app/conf"
 
 networks:
-  hubmap:
+  # This is the network created by gateway to enable communicaton between multiple docker-compose projects
+  gateway_hubmap:
+    external: true
