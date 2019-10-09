@@ -11,7 +11,7 @@ from hubmap_commons.hm_auth import secured
 import hubmap_commons.string_helper
 
 
-LOG_FILE_NAME = "/tmp/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
+LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
 logger = None
 worker = None
 app = Flask(__name__)
