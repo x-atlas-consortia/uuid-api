@@ -6,9 +6,9 @@ from uuid_worker import UUIDWorker
 import json
 from flask import Flask, request, Response
 
-
-import string_helper
+# HuBMAP commons
 from hubmap_commons.hm_auth import secured
+import hubmap_commons.string_helper
 
 
 LOG_FILE_NAME = "/tmp/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
