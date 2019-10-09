@@ -32,7 +32,9 @@ flask run -p 5001
 
 ## Local testing against HuBMAP Gateway
 
-This requires to have the [HuBMAP Gateway](https://github.com/hubmapconsortium/gateway) running locally.
+For running the uuid-api service behind the gateway, we'll build docker images for each project and set up the configurations.
+
+This also requires to have the [HuBMAP Gateway](https://github.com/hubmapconsortium/gateway) running locally because it creates the network for communication between these two docker-compose projects.
 
 ### Overview of tools
 
