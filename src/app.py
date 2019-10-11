@@ -8,7 +8,7 @@ from flask import Flask, request, Response
 
 # HuBMAP commons
 from hubmap_commons.hm_auth import secured
-import hubmap_commons.string_helper
+from hubmap_commons.string_helper import isBlank
 
 
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
@@ -32,9 +32,9 @@ def init():
         print(str(e))
 
     try:        
-        if 'APP_CLIENT_ID' not in app.config or string_helper.isBlank(app.config['APP_CLIENT_ID']):
+        if 'APP_CLIENT_ID' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
             raise Exception("Required configuration parameter APP_CLIENT_ID not found in application configuration.")
-        if 'APP_CLIENT_SECRET' not in app.config or string_helper.isBlank(app.config['APP_CLIENT_ID']):
+        if 'APP_CLIENT_SECRET' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
             raise Exception("Required configuration parameter APP_CLIENT_SECRET not found in application configuration.")
         cId = app.config['APP_CLIENT_ID']
         cSecret = app.config['APP_CLIENT_SECRET']
@@ -79,7 +79,7 @@ def add_hmuuid():
         if request.method == "POST":
             if 'sample_count' in request.args:
                 nArgs = request.args.get('sample_count')
-                if string_helper.isBlank(nArgs) or not nArgs.strip().isnumeric():
+                if isBlank(nArgs) or not nArgs.strip().isnumeric():
                     return Response("Sample count must be an integer ", 400)
                 rjson = worker.uuidPost(request, int(nArgs))
             else:
@@ -132,7 +132,7 @@ def is_hmuuid(hmuuid):
 
 if __name__ == "__main__":
     try:
-        app.run(host='0.0.0.0')
+        app.run(host='0.0.0.0', port="5001")
     except Exception as e:
         print("Error during starting debug server.")
         print(str(e))

@@ -12,7 +12,7 @@ from hmdb import DBConn
 import copy
 
 # HuBMAP commons
-import hubmap_commons.string_helper
+from hubmap_commons.string_helper import isBlank, isYes, listToCommaSeparated
 from hubmap_commons.hm_auth import AuthHelper
 
 MAX_GEN_IDS = 200
@@ -25,7 +25,7 @@ HEX_CHARS=['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
 UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
 
 def isValidHMId(hmid):
-	if string_helper.isBlank(hmid): return False
+	if isBlank(hmid): return False
 	tidl = hmid.strip().lower()	
 	if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt'):
 		return True	
@@ -42,7 +42,7 @@ def isValidHMId(hmid):
 	return True
 
 def stripHMid(hmid):
-	if string_helper.isBlank(hmid): return hmid
+	if isBlank(hmid): return hmid
 	thmid = hmid.strip();
 	if thmid.lower().startswith('hbm'): thmid = thmid[3:]
 	if thmid.startswith(':'): thmid = thmid[1:]
@@ -54,7 +54,7 @@ class UUIDWorker:
 	authHelper = None
 	
 	def __init__(self, clientId, clientSecret):
-		if clientId is None or clientSecret is None or string_helper.isBlank(clientId) or string_helper.isBlank(clientSecret):
+		if clientId is None or clientSecret is None or isBlank(clientId) or isBlank(clientSecret):
 			raise Exception("Globus client id and secret are required in AuthHelper")
 		
 		if not os.path.isfile(PROP_FILE_NAME):																						  
@@ -88,7 +88,7 @@ class UUIDWorker:
 		content = req.get_json()
 		if content is None or len(content) <= 0:
 			return(Response("Invalid input, uuid attributes required", 400))
-		if not 'entityType' in content or string_helper.isBlank(content['entityType']):
+		if not 'entityType' in content or isBlank(content['entityType']):
 			return(Response("entityType is a required attribute", 400))
 		
 		if 'hubmap-ids' in content:
@@ -101,14 +101,14 @@ class UUIDWorker:
 		
 		entityType = content['entityType'].upper().strip()
 		parentId = None
-		if('parentId' in content and not string_helper.isBlank(content['parentId'])):
+		if('parentId' in content and not isBlank(content['parentId'])):
 			parentId = content['parentId'].strip()
 
 		if(entityType == 'TISSUE' and parentId is None):
 			return(Response("parentId is a required attribute for TISSUE entities", 400))
 		
 		generateDOI = False
-		if('generateDOI' in content and string_helper.isYes(content['generateDOI'])):
+		if('generateDOI' in content and isYes(content['generateDOI'])):
 			generateDOI = True
 
 		if not parentId is None and not self.uuidExists(parentId):
@@ -150,7 +150,7 @@ class UUIDWorker:
 				raise Exception("Number of display ids to store " + str(len(displayIds)) + " does not match the number of ids being generated (" + str(nIds) + ")")
 			dupes = self.__findDupsInDB("HUBMAP_ID", displayIds)
 			if(dupes is not None and len(dupes) > 0):
-				raise Exception("Display ID(s) are not unique " + string_helper.listToCommaSeparated(dupes))
+				raise Exception("Display ID(s) are not unique " + listToCommaSeparated(dupes))
 			
 			#check for duplicates in the list of display ids
 			valueSet = set()
@@ -162,7 +162,7 @@ class UUIDWorker:
 					dupes.append(val)
 			
 			if len(dupes) > 0:
-				raise Exception("Input Display ID(s) are duplicated: " + string_helper.listToCommaSeparated(dupes))
+				raise Exception("Input Display ID(s) are duplicated: " + listToCommaSeparated(dupes))
 
 		returnIds = []
 		now = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -244,7 +244,7 @@ class UUIDWorker:
 		return list(ids)
 	
 	def __findDupsInDB(self, dbColumn, idSet):
-		sql = "select " + dbColumn + " from hm_uuids where " + dbColumn + " IN(" + string_helper.listToCommaSeparated(idSet, "'", True) + ")"
+		sql = "select " + dbColumn + " from hm_uuids where " + dbColumn + " IN(" + listToCommaSeparated(idSet, "'", True) + ")"
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
 				curs.execute(sql)
@@ -399,7 +399,7 @@ class UUIDWorker:
 			raise Exception('Required property ' + propName + ' not found')																												   
 		else:																													 
 			val = self.props[propName]																								
-			if string_helper.isBlank(val):																						
+			if isBlank(val):																						
 				raise Exception('Required property ' + propName + ' is blank')																												
 			else:																												 
 				return val.strip()																								
