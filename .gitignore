@@ -7,3 +7,6 @@ conf/uuid_app.conf
 
 # Ignore log but keep the log directory
 **/*.log
+
+.project
+.pydevproject
