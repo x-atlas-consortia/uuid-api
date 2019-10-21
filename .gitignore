@@ -11,4 +11,6 @@ conf/uuid_app.conf
 .project
 .pydevproject
 
-*.sh
+test/*.sh
+
+*~
