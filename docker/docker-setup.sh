@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Copy over the src and conf folders
-cp ../src uuid-api/
-cp ../conf uuid-api/
+cp -r ../src uuid-api/
+cp -r ../conf uuid-api/
 
 # Create log folder
 mkdir uuid-api/log
