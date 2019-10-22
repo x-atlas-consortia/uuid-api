@@ -112,6 +112,37 @@ def get_hmuuid(hmuuid):
         logger.error(e, exc_info=True)                                                                                                
         return(Response("Unexpected error: " + eMsg, 500))    
 
+'''
+Update id records to include display ids 
+
+PUT arguments in json
+   hubmap-uuids- an array of uuids to update
+    display-ids- an array of display ids to update for the associated (same order)
+                 records of the uuids passed in the hubmap-uuids array.
+
+   Only id records that currently DO NOT have an associated display-id can be updated.
+   
+ curl example:  curl -d '{"hubmap-uuids":["32ae6d81bc9df2d62a550c62c02df39a", "3a2bdd52946a14081d448261c7b52bb2"], "display-ids"["lab-id-1","lab-id-2"] }' -H "Content-Type: application/json" -H "Authorization: Bearer AgX07PVbz9Wb6WDK3QvP9p23j2vWV7bYnMGBvaQxQQGEY5MjJEIwC8x3vwqYmzwEzPw93qWYeGpEkKu4nOkPgs7VKQ" -X PUT http://localhost:5000/hmuuid  
+'''
+@app.route('/hmuuid', methods=["PUT"])
+@secured(groups="HuBMAP-read")
+def update_hmuuid():
+    global worker
+    global logger
+    try:
+        if request.method == "PUT":
+            rjson = worker.uuidPut(request)
+            if isinstance(rjson, Response):
+                return rjson                
+            
+            return Response(rjson, 200, {'Content-Type': "application/json"})
+        else:
+            return Response("Invalid request.  Use PUT to update a UUID", 500)
+    except Exception as e:
+        eMsg = str(e)
+        logger.error(e, exc_info=True)
+        return(Response("Unexpected error: " + eMsg, 500))
+
 @app.route('/hmuuid/<hmuuid>/exists', methods=["GET"])
 @secured(groups="HuBMAP-read")
 def is_hmuuid(hmuuid):
