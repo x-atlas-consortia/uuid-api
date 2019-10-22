@@ -2,6 +2,11 @@
 conf/uuid.properties
 conf/uuid_app.conf
 
+# Ignore copied over folders
+docker/uuid-api/src
+docker/uuid-api/log
+docker/uuid-api/conf
+
 # Ignore __pycache__ directories in any path
 **/__pycache__
 
