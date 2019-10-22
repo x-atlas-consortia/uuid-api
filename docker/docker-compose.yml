@@ -20,7 +20,13 @@ services:
     hostname: hubmap-mysql
     container_name: hubmap-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: example
+      - MYSQL_ROOT_PASSWORD: 6f8c114b58f2ce9e
+      - MYSQL_DATABASE: hubmap_db
+      - MYSQL_USER: hubmap
+      - MYSQL_PASSWORD: 123
+    volumes:
+      # Mount the sql stuff to container
+      - "./uuid-api/src/sql:/usr/src/uuid-api/sql"
     init: true
     restart: always
     ports:
