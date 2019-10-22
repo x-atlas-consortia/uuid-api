@@ -4,7 +4,7 @@ version: "3.7"
 services:
   
   uuid-api:
-    build: .
+    build: ./uuid-api
     # Build the image with name and tag
     image: uuid-api:0.1.0
     hostname: uuid-api
@@ -14,12 +14,13 @@ services:
     networks:
       - gateway_hubmap
 
-  hubmap-mysql:
-    build: ./hubmap-mysql
-    # Build the image with name and tag
-    image: hubmap-mysql:0.1.0
+  mysql:
+    # Pull official mysql docker image
+    image: mysql:8
     hostname: hubmap-mysql
     container_name: hubmap-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: example
     init: true
     restart: always
     ports:
