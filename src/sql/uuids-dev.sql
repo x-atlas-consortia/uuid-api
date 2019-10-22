@@ -29,14 +29,14 @@ CREATE TABLE `hm_uuids` (
   `PARENT_UUID` varchar(35) DEFAULT NULL,
   `TIME_GENERATED` timestamp NOT NULL,
   `USER_ID` varchar(50) NOT NULL,
-  `USER_EMAIL` varchar(200) DEFAULT NULL,
-  `HUBMAP_ID` varchar(767) DEFAULT NULL,
+  `user_email` varchar(50) DEFAULT NULL,
+  `hubmap_id` varchar(170) DEFAULT NULL,
   PRIMARY KEY (`HMUUID`),
   UNIQUE KEY `UUID_IDX` (`HMUUID`),
   UNIQUE KEY `DOI_SUFFIX` (`DOI_SUFFIX`),
   UNIQUE KEY `DOI_IDX` (`DOI_SUFFIX`),
-  UNIQUE KEY `HM_ID_IDX` (`HUBMAP_ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+  UNIQUE KEY `HM_ID_IDX` (`hubmap_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -58,4 +58,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2019-10-21 14:58:46
+-- Dump completed on 2019-10-22 15:06:08
