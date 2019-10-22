@@ -17,6 +17,7 @@ from hubmap_commons.hm_auth import AuthHelper
 
 MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
+UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
 PROP_FILE_NAME = os.path.join(os.path.dirname(__file__), '..', 'conf', 'uuid.properties') 
 DOI_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
@@ -131,6 +132,25 @@ class UUIDWorker:
 		#return rVal
 		return self.newUUIDs(generateDOI, parentId, entityType, userId, userEmail, nIds, hmids)
 
+	def uuidPut(self, req):
+		if not req.is_json:
+			return(Response("Invalid input, json required.", 400))
+		content = req.get_json()
+		if content is None or len(content) <= 0:
+			return(Response("Invalid input, hubmap-uuids and display-ids arrays required", 400))
+		if (not 'hubmap-uuids' in content) or content['hubmap-uuids'] is None or (not isinstance(content['hubmap-uuids'], list)) or (not len(content['hubmap-uuids']) > 0):
+			return(Response("hubmap-uuids is a required attribute", 400))
+		if (not 'display-ids' in content) or content['display-ids'] is None or (not isinstance(content['display-ids'], list) or (not len(content['display-ids']) > 0)):
+			return(Response("display-ids is a required attribute", 400))
+
+		uuids = content['hubmap-uuids']
+		disp_ids = content['display-ids']
+		
+		if len(uuids) != len(disp_ids):
+			return(Response("The length of the diplay-ids and hubmap-uuids arrays must be the same length", 400))
+		
+		return self.updateUUIDs(uuids, disp_ids)
+		 
 	def newUUIDTest(self, generateDOI, parentId, entityType, userId, userEmail):
 		return self.newUUID(generateDOI, parentId, entityType, userId, userEmail)
 
@@ -141,6 +161,52 @@ class UUIDWorker:
 		hexVal = hexVal.lower()
 		return hexVal
 	
+	def updateUUIDs(self, uuids, display_ids):
+		if len(uuids) != len(display_ids):
+			raise Exception("The number of uuids must match the number of display ids")
+		
+		idSet = set()
+		for uuid in uuids:
+			uuidt = uuid.lower().strip()
+			if uuidt in idSet:
+				raise Exception("During UUID update the uuid " + uuid + " is contained multiple times in the hubmap-uuids array")
+			idSet.add(uuidt)
+		
+		idSet = set()
+		for dispId in display_ids:
+			disIdT = dispId.lower().strip()
+			if disIdT in idSet:
+				raise Exception("During UUID update the display id " + dispId + " is contained multiple times in the diplay-ids array")
+			idSet.add(disIdT)
+			
+		excluded = self.__findExclusionsInDB("HMUUID", uuids)
+		if(excluded is not None and len(excluded) > 0):
+			raise Exception("UUIDs not contained in the id database " + listToCommaSeparated(excluded))
+		
+		#only id records that have a null display id can be updated
+		sql = "select hmuuid from hm_uuids where hmuuid in (" + listToCommaSeparated(uuids, "'", True) + ") and hubmap_id is not null"
+		with closing(self.hmdb.getDBConnection()) as dbConn:
+			with closing(dbConn.cursor()) as curs:
+				curs.execute(sql)
+				nonNull = curs.fetchall()		
+		if nonNull is not None and len(nonNull) > 0:
+			raise Exception("Some uuids do not have null display ids: " + listToCommaSeparated(nonNull))
+		
+		#if there are any display ids that match what we're updating to send an error
+		dupes = self.__findDupsInDB("HUBMAP_ID", display_ids)
+		if(dupes is not None and len(dupes) > 0):
+			raise Exception("Display ID(s) are not unique " + listToCommaSeparated(dupes))
+		
+		updateVals = []
+		for uuid, dispid in zip(uuids, display_ids):
+			updateRow = (dispid, uuid)
+			updateVals.append(updateRow)
+		
+		with closing(self.hmdb.getDBConnection()) as dbConn:
+			with closing(dbConn.cursor()) as curs:
+				curs.executemany(UPDATE_SQL, updateVals)
+			dbConn.commit()				
+				
 	#generate multiple ids, one for each display id in the displayIds array
 	def newUUIDs(self, generateDOI, parentID, entityType, userId, userEmail, nIds, displayIds=None):
 		hasDisplayIds = False
@@ -252,6 +318,25 @@ class UUIDWorker:
 		
 		return dupes
 
+
+
+	#which items in idSet are not in the database
+	def __findExclusionsInDB(self, dbColumn, idSet):
+		
+		sql = "select " + dbColumn + " from ( "
+		first = True
+		for id in idSet:
+			if first: first = False
+			else: sql = sql + " UNION ALL "
+			sql = sql + "(select '" + id + "' as " + dbColumn + ")"
+		sql = sql + ") as list left join hm_uuids using (" + dbColumn + ") where hm_uuids." + dbColumn + " is null"
+		with closing(self.hmdb.getDBConnection()) as dbConn:
+			with closing(dbConn.cursor()) as curs:
+				curs.execute(sql)
+				excluded = curs.fetchall()
+		
+		return excluded	
+	
 	
 	def newUUID(self, generateDOI, parentID, entityType, userId, userEmail, hubmapId=None):
 		doi = None
