@@ -1,0 +1,17 @@
+version: "3.7"
+
+services:
+  
+  uuid-api:
+    volumes:
+      # Mount the source code to container
+      - "./uuid-api/src:/usr/src/app/src"
+
+  mysql:
+    environment:
+      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_DATABASE: hubmap_db
+      MYSQL_USER: hubmap
+      MYSQL_PASSWORD: 123
+    ports:
+      - "3306:3306"
