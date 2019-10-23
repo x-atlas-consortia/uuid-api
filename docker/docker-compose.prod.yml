@@ -14,5 +14,4 @@ services:
       MYSQL_PASSWORD: 123
     init: true
     restart: always
-    ports:
-      - "3306:3306"
+    
