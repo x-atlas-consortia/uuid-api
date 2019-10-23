@@ -11,9 +11,9 @@ services:
     container_name: uuid-api
     volumes:
       # Mount the configuration to container
-      - "./uuid-api/conf:/usr/src/app/conf"
+      - "../conf:/usr/src/app/conf"
       # Mount the logging to container
-      - "./uuid-api/log:/usr/src/app/log"
+      - "../log:/usr/src/app/log"
     networks:
       - gateway_hubmap
 
@@ -22,9 +22,12 @@ services:
     image: mysql:8
     hostname: hubmap-mysql
     container_name: hubmap-mysql
+    # Use the same port mapping for dev and prod
+    ports:
+      - "3306:3306"
     volumes:
       # Mount the sql to container
-      - "./uuid-api/sql:/usr/src/uuid-api/sql"
+      - "../sql:/usr/src/uuid-api/sql"
     networks:
       - gateway_hubmap
     
