@@ -9,8 +9,11 @@ services:
     image: uuid-api:0.1.0
     hostname: uuid-api
     container_name: uuid-api
-    init: true
-    restart: always
+    volumes:
+      # Mount the configuration to container
+      - "./uuid-api/conf:/usr/src/app/conf"
+      # Mount the logging to container
+      - "./uuid-api/log:/usr/src/app/log"
     networks:
       - gateway_hubmap
 
@@ -19,18 +22,9 @@ services:
     image: mysql:8
     hostname: hubmap-mysql
     container_name: hubmap-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: 6f8c114b58f2ce9e
-      MYSQL_DATABASE: hubmap_db
-      MYSQL_USER: hubmap
-      MYSQL_PASSWORD: 123
     volumes:
-      # Mount the sql stuff to container
-      - "./uuid-api/src/sql:/usr/src/uuid-api/sql"
-    init: true
-    restart: always
-    ports:
-      - "3306:3306"
+      # Mount the sql to container
+      - "./uuid-api/sql:/usr/src/uuid-api/sql"
     networks:
       - gateway_hubmap
     

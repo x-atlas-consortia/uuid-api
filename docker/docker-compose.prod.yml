@@ -1,0 +1,18 @@
+version: "3.7"
+
+services:
+  
+  uuid-api:
+    init: true
+    restart: always
+
+  mysql:
+    environment:
+      MYSQL_ROOT_PASSWORD: 6f8c114b58f2ce9e
+      MYSQL_DATABASE: hubmap_db
+      MYSQL_USER: hubmap
+      MYSQL_PASSWORD: 123
+    init: true
+    restart: always
+    ports:
+      - "3306:3306"
