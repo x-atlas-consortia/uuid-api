@@ -6,11 +6,11 @@ services:
     init: true
     restart: always
 
-  mysql:
+  hubmap-mysql:
     environment:
       MYSQL_ROOT_PASSWORD: 6f8c114b58f2ce9e
-      MYSQL_DATABASE: hubmap_db
-      MYSQL_USER: hubmap
+      MYSQL_DATABASE: hm_uuid
+      MYSQL_USER: uuid-user
       MYSQL_PASSWORD: 123
     init: true
     restart: always
