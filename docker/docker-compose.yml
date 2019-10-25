@@ -17,7 +17,7 @@ services:
     networks:
       - gateway_hubmap
 
-  mysql:
+  hubmap-mysql:
     # Pull official mysql docker image
     image: mysql:8
     hostname: hubmap-mysql

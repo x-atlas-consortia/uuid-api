@@ -7,10 +7,10 @@ services:
       # Mount the source code to container
       - "../src:/usr/src/app/src"
 
-  mysql:
+  hubmap-mysql:
     environment:
       MYSQL_ROOT_PASSWORD: 123
-      MYSQL_DATABASE: hubmap_db
-      MYSQL_USER: hubmap
+      MYSQL_DATABASE: hm_uuid
+      MYSQL_USER: uuid-user
       MYSQL_PASSWORD: 123
 
