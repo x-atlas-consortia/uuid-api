@@ -3,9 +3,9 @@ The uuid-api service is a restful web service used to create and query UUIDs use
 
 ## Local development
 
-### Flask config
+### Flask app configuration
 
-This application is written in Flask and it includes `uuid.properties.example` and `uuid_app.conf.example` in the `/conf` directory.  Copy the files and remove the `.example` from filename then modify with the appropriate information.
+This application is written in Flask and it includes `app.cfg.example` in the `/src/instance` directory.  Copy the file and remove the `.example` from filename then modify with the appropriate information.
 
 ### Install dependencies
 
