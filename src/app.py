@@ -11,11 +11,13 @@ from hubmap_commons.hm_auth import secured
 from hubmap_commons.string_helper import isBlank
 
 
+# Specify the absolute path of the instance folder and use the config file relative to the instance path
+app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.curdir), 'instance'), instance_relative_config=True)
+app.config.from_pyfile('app.cfg')
+
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
 logger = None
 worker = None
-app = Flask(__name__)
-app.config.from_pyfile('../conf/uuid_app.conf')
 
 @app.before_first_request
 def init():
@@ -38,7 +40,11 @@ def init():
             raise Exception("Required configuration parameter APP_CLIENT_SECRET not found in application configuration.")
         cId = app.config['APP_CLIENT_ID']
         cSecret = app.config['APP_CLIENT_SECRET']
-        worker = UUIDWorker(clientId=cId, clientSecret=cSecret)
+        dbHost = app.config['DB_HOST']
+        dbName = app.config['DB_NAME']
+        dbUsername = app.config['DB_USERNAME']
+        dbPassword = app.config['DB_PASSWORD']
+        worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername, dbPassword=dbPassword)
         logger.info("initialized")
 
     except Exception as e:

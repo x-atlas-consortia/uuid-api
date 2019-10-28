@@ -1,0 +1,9 @@
+APP_CLIENT_ID = ''
+APP_CLIENT_SECRET = ''
+
+
+DB_HOST = 'hubmap-mysql'
+DB_NAME = 'hm_uuid'
+DB_USERNAME = 'uuid-user'
+DB_PASSWORD = '123'
+
