@@ -30,13 +30,11 @@ This code runs by default on port 5000. You can change the port using a `-p` or 
 flask run -p 5001
 ````
 
-## Local testing against HuBMAP Gateway
+## Local testing against HuBMAP Gateway in a containerized environment
 
-For running the uuid-api service behind the gateway, we'll build docker images for each project and set up the configurations.
+This option allows you to setup all the pieces (gateway for authentication, MySQL database server...) in a containerized environment with docker and docker-compose. This requires to have the [HuBMAP Gateway](https://github.com/hubmapconsortium/gateway) running locally.
 
-This also requires to have the [HuBMAP Gateway](https://github.com/hubmapconsortium/gateway) running locally because it creates the network for communication between these two docker-compose projects.
-
-### Overview of tools
+### Required tools
 
 - [Docker](https://docs.docker.com/install/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
@@ -52,11 +50,35 @@ In the `Dockerfile`, we installed uWSGI and the uWSGI Python plugin via yum. The
 ### Build docker image
 
 ````
-sudo docker-compose build
+cd docker
+./docker-setup.sh
+sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml build
 ````
 
-### Start up service
+### Start up container
 
 ````
-sudo docker-compose up
+sudo docker-compose -p uuid-api_and_mysql -f docker-compose.yml -f docker-compose.dev.yml up -d
 ````
+
+Note: here we specify the docker compose project with the `-p` to avoid "WARNING: Found orphan containers ..." due to the fact that docker compose uses the directory name as the default project name.
+
+### Shell into the MySQL container to load the database table sql
+
+````
+sudo docker exec -it <mysql container ID> bash
+````
+
+Inside the MySQL container:
+
+````
+cd /usr/src/uuid-api/sql
+````
+
+Import the `hm_uuids` table into the database:
+
+````
+root@hubmap-mysql:/usr/src/uuid-api/sql# mysql -u root -p hm_uuid < uuids-dev.sql
+````
+
+Note: the MySQL username and password are specified in the docker-compose yaml file.
