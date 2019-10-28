@@ -1,6 +1,5 @@
 # Ignore config files
-conf/uuid.properties
-conf/uuid_app.conf
+src/instance/app.cfg
 
 # Ignore copied over folders
 docker/uuid-api/src

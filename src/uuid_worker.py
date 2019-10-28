@@ -7,7 +7,6 @@ import secrets
 import time
 from contextlib import closing
 import json
-from properties.p import Property #pip install property 
 from hmdb import DBConn
 import copy
 
@@ -19,7 +18,6 @@ MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
 UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
-PROP_FILE_NAME = os.path.join(os.path.dirname(__file__), '..', 'conf', 'uuid.properties') 
 DOI_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
 DOI_NUM_CHARS=['2','3','4','5','6','7','8','9']                                                                                   
 HEX_CHARS=['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
@@ -54,12 +52,9 @@ class UUIDWorker:
 
 	authHelper = None
 	
-	def __init__(self, clientId, clientSecret):
+	def __init__(self, clientId, clientSecret, dbHost, dbName, dbUsername, dbPassword):
 		if clientId is None or clientSecret is None or isBlank(clientId) or isBlank(clientSecret):
 			raise Exception("Globus client id and secret are required in AuthHelper")
-		
-		if not os.path.isfile(PROP_FILE_NAME):																						  
-			raise Exception("Property file " + PROP_FILE_NAME + " is required and was not found.")											   
 
 		if not AuthHelper.isInitialized():
 			self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
@@ -68,12 +63,11 @@ class UUIDWorker:
 			
 		#Open the config file	
 		self.logger = logging.getLogger('uuid.service')                                                                                             																									 
-		propMgr = Property()																										  
-		self.props = propMgr.load_property_files(PROP_FILE_NAME)
-		self.dbName = self.getProperty("db.name")
-		self.dbUsername = self.getProperty("db.username")
-		self.dbPassword = self.getProperty("db.password")
-		self.dbHost = self.getProperty("db.host")
+
+		self.dbHost = dbHost
+		self.dbName = dbName
+		self.dbUsername = dbUsername
+		self.dbPassword = dbPassword
 		self.lock = threading.RLock()
 		self.hmdb = DBConn(self.dbHost, self.dbUsername, self.dbPassword, self.dbName)
 
@@ -479,12 +473,3 @@ class UUIDWorker:
 		if(res[0] == 0): return False
 		raise Exception("Multiple HuBMAP IDs found matching " + hmid)
 		
-	def getProperty(self, propName):																		 
-		if not propName in self.props:																								
-			raise Exception('Required property ' + propName + ' not found')																												   
-		else:																													 
-			val = self.props[propName]																								
-			if isBlank(val):																						
-				raise Exception('Required property ' + propName + ' is blank')																												
-			else:																												 
-				return val.strip()																								
