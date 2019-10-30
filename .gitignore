@@ -5,6 +5,7 @@ src/instance/app.cfg
 docker/uuid-api/src
 docker/uuid-api/log
 docker/uuid-api/conf
+docker/hubmap-mysql/uuids-dev.sql
 
 # Ignore __pycache__ directories in any path
 **/__pycache__

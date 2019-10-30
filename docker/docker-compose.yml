@@ -18,16 +18,14 @@ services:
       - gateway_hubmap
 
   hubmap-mysql:
-    # Pull official mysql docker image
-    image: mysql:8
+    build: ./hubmap-mysql
+    # Build the image with name and tag
+    image: hubmap-mysql:0.1.0
     hostname: hubmap-mysql
     container_name: hubmap-mysql
     # Use the same port mapping for dev and prod
     ports:
       - "3306:3306"
-    volumes:
-      # Mount the sql to container
-      - "../sql:/usr/src/uuid-api/sql"
     networks:
       - gateway_hubmap
     
