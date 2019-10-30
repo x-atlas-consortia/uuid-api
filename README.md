@@ -54,17 +54,4 @@ Note: here we specify the docker compose project with the `-p` to avoid "WARNING
 
 Also note that the Gateway and other API projects use the same shared network **gateway_hubmap** so the containers of each docker compose project can communicate to each other across multiple docker compose projects. This network needs to be created explicitly when setting up with `gateway` project.
 
-### Shell into the MySQL container to load the database table sql
-
-````
-sudo docker exec -it <mysql container ID> bash
-````
-
-Inside the MySQL container, just import the hm_uuids table into the database:
-
-````
-cd /usr/src/uuid-api/sql
-mysql -u root -p hm_uuid < uuids-dev.sql
-````
-
 Note: the MySQL username and password are specified in the docker-compose yaml file.
