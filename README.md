@@ -60,16 +60,11 @@ Also note that the Gateway and other API projects use the same shared network **
 sudo docker exec -it <mysql container ID> bash
 ````
 
-Inside the MySQL container:
+Inside the MySQL container, just import the hm_uuids table into the database:
 
 ````
 cd /usr/src/uuid-api/sql
-````
-
-Import the `hm_uuids` table into the database:
-
-````
-root@hubmap-mysql:/usr/src/uuid-api/sql# mysql -u root -p hm_uuid < uuids-dev.sql
+mysql -u root -p hm_uuid < uuids-dev.sql
 ````
 
 Note: the MySQL username and password are specified in the docker-compose yaml file.
