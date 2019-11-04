@@ -2,7 +2,7 @@
 FROM centos:7
 
 LABEL description="HuBMAP UUID API Service" \
-	version="0.1.0"
+	version="1.1"
 
 # Change to directory that contains the Dockerfile
 WORKDIR /usr/src/app
