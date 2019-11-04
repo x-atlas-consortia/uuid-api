@@ -1,7 +1,7 @@
 # Parent image
 FROM centos:7
 
-LABEL description="HuBMAP Entity API Service" \
+LABEL description="HuBMAP UUID API Service" \
 	version="0.1.0"
 
 # Change to directory that contains the Dockerfile

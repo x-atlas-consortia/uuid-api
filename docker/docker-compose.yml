@@ -1,0 +1,35 @@
+version: "3.7"
+
+# Will use the hostname when talking between services on the same network
+services:
+  
+  uuid-api:
+    build: ./uuid-api
+    # Build the image with name and tag
+    image: uuid-api:0.1.0
+    hostname: uuid-api
+    container_name: uuid-api
+    volumes:
+      # Mount the app config to container in order to keep it outside of the image
+      - "../src/instance:/usr/src/app/src/instance"
+      # Mount the logging to container
+      - "../log:/usr/src/app/log"
+    networks:
+      - gateway_hubmap
+
+  hubmap-mysql:
+    build: ./hubmap-mysql
+    # Build the image with name and tag
+    image: hubmap-mysql:0.1.0
+    hostname: hubmap-mysql
+    container_name: hubmap-mysql
+    # Use the same port mapping for dev and prod
+    ports:
+      - "3306:3306"
+    networks:
+      - gateway_hubmap
+    
+networks:
+  # This is the network created by gateway to enable communicaton between multiple docker-compose projects
+  gateway_hubmap:
+    external: true
