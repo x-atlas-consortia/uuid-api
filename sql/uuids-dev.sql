@@ -18,6 +18,9 @@
 --
 -- Table structure for table `hm_uuids`
 --
+CREATE DATABASE hm_uuid;
+
+USE hm_uuid;
 
 DROP TABLE IF EXISTS `hm_uuids`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
