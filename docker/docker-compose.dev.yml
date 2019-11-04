@@ -10,7 +10,5 @@ services:
   hubmap-mysql:
     environment:
       MYSQL_ROOT_PASSWORD: 123
-      MYSQL_DATABASE: hm_uuid
-      MYSQL_USER: uuid-user
-      MYSQL_PASSWORD: 123
+
 
