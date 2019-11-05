@@ -12,7 +12,7 @@ from hubmap_commons.string_helper import isBlank
 
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
-app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.curdir), 'instance'), instance_relative_config=True)
+app = Flask(__name__, instance_path=os.path.join(os.path.dirname(__file__), 'instance'), instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
 
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
