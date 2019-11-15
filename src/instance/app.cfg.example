@@ -1,7 +1,8 @@
+# Globus App ID and secret
 APP_CLIENT_ID = ''
 APP_CLIENT_SECRET = ''
 
-
+# MySQL connection
 DB_HOST = 'hubmap-mysql'
 DB_NAME = 'hm_uuid'
 DB_USERNAME = 'root'
