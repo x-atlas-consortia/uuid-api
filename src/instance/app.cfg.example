@@ -2,7 +2,8 @@
 APP_CLIENT_ID = ''
 APP_CLIENT_SECRET = ''
 
-# MySQL connection
+# MySQL connection (default value used for dev environment)
+# Point to remote MySQL for testing and production deployment
 DB_HOST = 'hubmap-mysql'
 DB_NAME = 'hm_uuid'
 DB_USERNAME = 'root'
