@@ -17,18 +17,6 @@ services:
     networks:
       - gateway_hubmap
 
-  hubmap-mysql:
-    build: ./hubmap-mysql
-    # Build the image with name and tag
-    image: hubmap-mysql:1.1
-    hostname: hubmap-mysql
-    container_name: hubmap-mysql
-    # Use the same port mapping for dev and prod
-    ports:
-      - "3306:3306"
-    networks:
-      - gateway_hubmap
-    
 networks:
   # This is the network created by gateway to enable communicaton between multiple docker-compose projects
   gateway_hubmap:
