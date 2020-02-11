@@ -9,6 +9,8 @@ services:
     image: uuid-api:1.1
     hostname: uuid-api
     container_name: uuid-api
+    environment:
+      - HOST_UID=1000
     volumes:
       # Mount the app config to container in order to keep it outside of the image
       - "../src/instance:/usr/src/app/src/instance"
