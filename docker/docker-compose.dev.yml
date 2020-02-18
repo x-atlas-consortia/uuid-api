@@ -7,20 +7,3 @@ services:
       # Mount the source code to container
       - "../src:/usr/src/app/src"
   
-  # Only used by local development
-  hubmap-mysql:
-    build: ./hubmap-mysql
-    # Build the image with name and tag
-    image: hubmap-mysql:1.1
-    hostname: hubmap-mysql
-    container_name: hubmap-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: 123
-    # Use the same port mapping for dev and prod
-    ports:
-      - "3306:3306"
-    networks:
-      - gateway_hubmap
-
-
-
