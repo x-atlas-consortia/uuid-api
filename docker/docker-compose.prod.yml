@@ -6,6 +6,6 @@ services:
     init: true
     restart: always
     environment:
-      - HOST_GID=1000
-      - HOST_UID=1000
+      - HOST_GID=${HOST_GID:-1000}
+      - HOST_UID=${HOST_GID:-1000}
 
