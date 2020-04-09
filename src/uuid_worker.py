@@ -23,10 +23,18 @@ DOI_NUM_CHARS=['2','3','4','5','6','7','8','9']
 HEX_CHARS=['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
 UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
 
+
+def startsWithComponentPrefix(hmid):
+	tidl = hmid.strip().lower()
+	if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt') or tidl.startswith('rtibd') or tidl.startswith('rtige') or tidl.startswith('rtinw') or tidl.startswith('rtist') or tidl.startswith('ttdct') or tidl.startswith('ttdhv') or tidl.startswith('ttdpd') or tidl.startswith('ttdst'):
+		return True
+	else:
+		return False
+
+
 def isValidHMId(hmid):
 	if isBlank(hmid): return False
-	tidl = hmid.strip().lower()	
-	if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt') or tidl.startswith('rtibd') or tidl.startswith('rtige') or tidl.startswith('rtinw') or tidl.startswith('rtist') or tidl.startswith('ttdct') or tidl.startswith('ttdhv') or tidl.startswith('ttdpd') or tidl.startswith('ttdst'):
+	if 	startsWithComponentPrefix(hmid):
 		return True	
 	tid = stripHMid(hmid)
 	l = len(tid)
@@ -411,8 +419,7 @@ class UUIDWorker:
 			if not isValidHMId(hmid):
 				return Response("Invalid HuBMAP Id", 400)
 			tid = stripHMid(hmid)
-			tidl = hmid.strip().lower()
-			if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt'):
+			if startsWithComponentPrefix(hmid):			
 				return self.hmidExists(hmid.strip())			
 			elif len(tid) == 10:
 				return self.doiExists(tid.upper())
@@ -427,7 +434,7 @@ class UUIDWorker:
 			return Response("Invalid HuBMAP Id", 400)
 		tidl = hmid.strip().lower()
 		tid = stripHMid(hmid)
-		if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt'):
+		if startsWithComponentPrefix(hmid):
 			sql = "select " + UUID_SELECTS + " from hm_uuids where lower(hubmap_id) ='" + tidl + "'"
 		elif len(tid) == 10:
 			sql = "select " + UUID_SELECTS + " from hm_uuids where doi_suffix ='" + tid + "'"
@@ -441,7 +448,7 @@ class UUIDWorker:
 				results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in curs.fetchall()]
 
 		return json.dumps(results, indent=4, sort_keys=True, default=str)
-
+								
 	def uuidExists(self, hmid):
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
