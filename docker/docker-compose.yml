@@ -6,7 +6,7 @@ services:
   uuid-api:
     build: ./uuid-api
     # Build the image with name and tag
-    image: uuid-api:1.1
+    image: uuid-api:1.2
     hostname: uuid-api
     container_name: uuid-api
     volumes:
