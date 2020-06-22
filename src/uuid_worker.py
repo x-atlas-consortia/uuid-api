@@ -480,17 +480,19 @@ class UUIDWorker:
 		if(res[0] == 0): return False
 		raise Exception("Multiple HuBMAP IDs found matching " + hmid)
 
-        def testConnection(self):
-                try:
-		        with closing(self.hmdb.getDBConnection()) as dbConn:
-			        with closing(dbConn.cursor()) as curs:
-				        curs.execute("select 'ANYTHING'")
-				        res = curs.fetchone()
-		        if(res is None or len(res) == 0): return False
-		        if(res[0] == 'ANYTHING'):
-                                return True
-                        else:
-                                return False
-                except Exception as e:
-                        self.logger.error(e, exc_info=True)
-                        return False
+	def testConnection(self):
+		try:
+			res = None
+			with closing(self.hmdb.getDBConnection()) as dbConn:
+				with closing(dbConn.cursor()) as curs:
+					curs.execute("select 'ANYTHING'")
+					res = curs.fetchone()
+			
+			if(res is None or len(res) == 0): return False
+			if(res[0] == 'ANYTHING'):
+				return True
+			else:
+				return False
+		except Exception as e:
+			self.logger.error(e, exc_info=True)
+			return False
