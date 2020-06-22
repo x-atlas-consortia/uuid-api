@@ -167,6 +167,21 @@ def is_hmuuid(hmuuid):
         logger.error(e, exc_info=True)
         return(Response("Unexpected error: " + eMsg, 500))
 
+@app.route('/hmuuid/status', methods=['GET'])
+def status():
+    global worker
+    global logger
+    try:
+        dbcheck = worker.testConnection()
+        if dbcheck:
+            return(Response("OK", 200))
+        else:
+            return(Response("FAILED", 500))
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return(Response("FAILED", 500))    
+
+    
 if __name__ == "__main__":
     try:
         app.run(host='0.0.0.0', port="5001")
