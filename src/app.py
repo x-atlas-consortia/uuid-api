@@ -59,6 +59,21 @@ def init():
 def index():
     return "Hello! This is HuBMAP UUID API service :)"
 
+# Status of MySQL connection
+@app.route('/mysql_connection_status', methods=['GET'])
+def mysql_connection_status():
+    global worker
+    global logger
+
+    response_data = {
+        'mysql_connection': False
+    }
+
+    dbcheck = worker.testConnection()
+    if dbcheck:
+        response_data['mysql_connection'] = True
+   
+    return jsonify(response_data)
 
 
 '''
@@ -167,19 +182,6 @@ def is_hmuuid(hmuuid):
         logger.error(e, exc_info=True)
         return(Response("Unexpected error: " + eMsg, 500))
 
-@app.route('/hmuuid/status', methods=['GET'])
-def status():
-    global worker
-    global logger
-    try:
-        dbcheck = worker.testConnection()
-        if dbcheck:
-            return(Response("OK", 200))
-        else:
-            return(Response("FAILED", 500))
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return(Response("FAILED", 500))    
 
     
 if __name__ == "__main__":
