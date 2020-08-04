@@ -60,8 +60,8 @@ def index():
     return "Hello! This is HuBMAP UUID API service :)"
 
 # Status of MySQL connection
-@app.route('/mysql_connection_status', methods=['GET'])
-def mysql_connection_status():
+@app.route('/status', methods=['GET'])
+def status():
     global worker
     global logger
 
