@@ -4,7 +4,7 @@ import time
 import logging
 from uuid_worker import UUIDWorker
 import json
-from flask import Flask, request, Response
+from flask import Flask, request, Response, jsonify
 
 # HuBMAP commons
 from hubmap_commons.hm_auth import secured
