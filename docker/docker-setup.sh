@@ -2,7 +2,7 @@
 
 # Set the version environment variable for the docker build
 # Version number is from the VERSION file
-export UUID_API_VERSION=`cat VERSION`
+export UUID_API_VERSION=`cat ../VERSION`
 
 echo "UUID_API_VERSION: $UUID_API_VERSION"
 
