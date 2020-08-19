@@ -84,7 +84,7 @@ And stop the running container by:
 You can also stop the running container and remove it by:
 
 ````
-source ./uuid-api-docker.sh dev down
+./uuid-api-docker.sh dev down
 ````
 
 ### Updating API Documentation
