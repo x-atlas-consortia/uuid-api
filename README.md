@@ -65,7 +65,7 @@ To build the docker image of uuid-api:
 source ./uuid-api-docker.sh dev build
 ````
 
-To start up the uuid-api container (including nginx on the same container):
+To start up the uuid-api container:
 
 ````
 source ./uuid-api-docker.sh dev start
