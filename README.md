@@ -38,6 +38,10 @@ echo $COMMONS_BRANCH
 
 Note: Environment variables set like this are only stored temporally. When you exit the running instance of bash by exiting the terminal, they get discarded. So for rebuilding the docker image, we'll need to make sure to set the environment variables again if necessary.
 
+````
+Usage: ./uuid-api-docker.sh [localhost|dev|test|stage|prod] [setup|check|config|build|start|stop|down]
+````
+
 Before we go ahead to start building the docker image, we can do a check to see if the required configuration file is in place:
 
 ````
@@ -62,19 +66,19 @@ Then log out and log back in so that your group membership is re-evaluated. If t
 To build the docker image of uuid-api:
 
 ````
-source ./uuid-api-docker.sh dev build
+./uuid-api-docker.sh dev build
 ````
 
 To start up the uuid-api container (including nginx on the same container):
 
 ````
-source ./uuid-api-docker.sh dev start
+./uuid-api-docker.sh dev start
 ````
 
 And stop the running container by:
 
 ````
-source ./uuid-api-docker.sh dev stop
+./uuid-api-docker.sh dev stop
 ````
 
 ### Updating API Documentation
