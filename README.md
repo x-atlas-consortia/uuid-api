@@ -69,7 +69,7 @@ To build the docker image of uuid-api:
 ./uuid-api-docker.sh dev build
 ````
 
-To start up the uuid-api container (including nginx on the same container):
+To start up the uuid-api container:
 
 ````
 ./uuid-api-docker.sh dev start
@@ -79,6 +79,12 @@ And stop the running container by:
 
 ````
 ./uuid-api-docker.sh dev stop
+````
+
+You can also stop the running container and remove it by:
+
+````
+source ./uuid-api-docker.sh dev down
 ````
 
 ### Updating API Documentation
