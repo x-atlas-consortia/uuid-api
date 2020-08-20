@@ -58,7 +58,7 @@ else
             echo 'Checks complete, all good :)'
         elif [ "$2" = "config" ]; then
             export_version
-            docker-compose -p uuid-api -f docker-compose.yml -f docker-compose.$1.yml config
+            docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api --verbose config
         elif [ "$2" = "build" ]; then
             # Copy over the source code to docker directory
             cp -r ../src uuid-api/
@@ -66,16 +66,16 @@ else
             cp -r ../sql/uuids-dev.sql hubmap-mysql/uuids-dev.sql
 
             export_version
-            docker-compose -f docker-compose.yml -f docker-compose.$1.yml build
+            docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api --verbose build
         elif [ "$2" = "start" ]; then
             export_version
-            docker-compose -p uuid-api -f docker-compose.yml -f docker-compose.$1.yml up -d
+            docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api --verbose up -d
         elif [ "$2" = "stop" ]; then
             export_version
-            docker-compose -p uuid-api -f docker-compose.yml -f docker-compose.$1.yml stop
+            docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api --verbose stop
         elif [ "$2" = "down" ]; then
             export_version
-            docker-compose -p uuid-api -f docker-compose.yml -f docker-compose.$1.yml down
+            docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api --verbose down
         fi
     fi
 fi
