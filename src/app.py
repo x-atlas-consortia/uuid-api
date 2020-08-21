@@ -66,6 +66,7 @@ def status():
     global logger
 
     response_data = {
+        'version': (Path(__file__).parent / 'VERSION').read_text(),
         'mysql_connection': False
     }
 
