@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 import time
 import logging
 from uuid_worker import UUIDWorker
@@ -67,6 +68,7 @@ def status():
 
     response_data = {
         'version': (Path(__file__).parent / 'VERSION').read_text(),
+        'build': (Path(__file__).parent / 'BUILD').read_text(),
         'mysql_connection': False
     }
 
