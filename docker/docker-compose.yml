@@ -14,6 +14,12 @@ services:
     image: uuid-api:${UUID_API_VERSION:?err}
     hostname: uuid-api
     container_name: uuid-api
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://hubmap-auth:9999"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     volumes:
       # Mount the app config to container in order to keep it outside of the image
       - "../src/instance:/usr/src/app/src/instance"
