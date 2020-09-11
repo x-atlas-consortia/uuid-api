@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 import time
 import logging
 from uuid_worker import UUIDWorker
@@ -66,6 +67,9 @@ def status():
     global logger
 
     response_data = {
+        # Use strip() to remove leading and trailing spaces, newlines, and tabs
+        'version': (Path(__file__).parent / 'VERSION').read_text().strip(),
+        'build': (Path(__file__).parent / 'BUILD').read_text().strip(),
         'mysql_connection': False
     }
 
