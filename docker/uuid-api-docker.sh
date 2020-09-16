@@ -104,6 +104,16 @@ else
             # Only mount the VERSION file and BUILD file for localhost and dev
             # On test/stage/prod, copy the VERSION file and BUILD file to image
             if [[ "$1" != "localhost" && "$1" != "dev" ]]; then
+                # Delete old VERSION and BUILD files if found
+                if [ -f "uuid-api/src/VERSION" ]; then
+                    rm -rf uuid-api/src/VERSION
+                fi
+                
+                if [ -f "uuid-api/src/BUILD" ]; then
+                    rm -rf uuid-api/src/BUILD
+                fi
+                
+                # Copy over the one files
                 cp VERSION uuid-api/src
                 cp BUILD uuid-api/src
             fi
