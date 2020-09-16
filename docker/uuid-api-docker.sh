@@ -114,8 +114,8 @@ else
                 fi
                 
                 # Copy over the one files
-                cp VERSION uuid-api/src
-                cp BUILD uuid-api/src
+                cp ../VERSION uuid-api/src
+                cp ../BUILD uuid-api/src
             fi
 
             docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api build
