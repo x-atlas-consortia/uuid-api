@@ -1,6 +1,11 @@
 # Ignore config files
 src/instance/app.cfg
 
+BUILD
+# mounted BUILD/VERSION file
+src/BUILD
+src/VERSION
+
 # Ignore copied over folders
 docker/uuid-api/src
 docker/uuid-api/log
