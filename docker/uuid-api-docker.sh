@@ -95,12 +95,6 @@ else
             # Copy over the source code to docker directory
             cp -r ../src uuid-api/
 
-            # Also load the sample MySQL database for localhost build
-            if [ "$1" = "localhost" ]; then
-                # Copy over the sql database
-                cp -r ../sql/uuids-dev.sql hubmap-mysql/uuids-dev.sql
-            fi
-
             # Only mount the VERSION file and BUILD file for localhost and dev
             # On test/stage/prod, copy the VERSION file and BUILD file to image
             if [[ "$1" != "localhost" && "$1" != "dev" && "$1" != "refactor" ]]; then
