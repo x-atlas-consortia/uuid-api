@@ -129,6 +129,11 @@ def get_hmuuid(hmuuid):
     try:
         if request.method == "GET":
             info = worker.getIdInfo(hmuuid)
+
+            # In Python, empty sequences (strings, lists, tuples) are false
+            if not info:
+                return Response ("Could not find the target id: " + hmuuid, 404)
+
             return info
         else:
             return Response ("Invalid request use GET to retrieve UUID information", 500)
