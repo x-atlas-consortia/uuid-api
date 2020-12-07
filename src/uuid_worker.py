@@ -446,11 +446,11 @@ class UUIDWorker:
 			with closing(dbConn.cursor()) as curs:
 				curs.execute(sql)
 				results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in curs.fetchall()]
-        
-        # In Python, empty sequences (strings, lists, tuples) are false
-        if not results:
-            return Response ("Could not find the target id: " + hmid, 404)
-            
+
+		# In Python, empty sequences (strings, lists, tuples) are false
+		if not results:
+			return Response ("Could not find the target id: " + hmid, 404)
+
 		return json.dumps(results, indent=4, sort_keys=True, default=str)
 								
 	def uuidExists(self, hmid):
