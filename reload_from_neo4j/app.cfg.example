@@ -1,0 +1,11 @@
+# Globus App ID and secret
+APP_CLIENT_ID = ''
+APP_CLIENT_SECRET = ''
+
+# MySQL connection (default value used for docker dev environment)
+# Point to remote MySQL for testing and production deployment
+DB_HOST = 'hubmap-mysql'
+DB_NAME = 'hm_uuid'
+DB_USERNAME = 'root'
+DB_PASSWORD = '123'
+
