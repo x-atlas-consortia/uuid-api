@@ -1,5 +1,6 @@
 # Ignore config files
 src/instance/app.cfg
+app.cfg
 
 BUILD
 # mounted BUILD/VERSION file
