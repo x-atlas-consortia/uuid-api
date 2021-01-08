@@ -1,0 +1,15 @@
+# Point to the MySQL db that will be loaded
+db.host=hubmap-mysql
+db.name=hm.uuid
+db.username=root
+db.password=123
+
+#a mapping of user email addresses to user ids used when
+#a user id is missing in neo4j
+user.mapping={"someone@pitt.edu":"43e53b4a-7853-33e4-99f3-bce224a0e312","someone@ufl.edu":"5eab9484-6bec-486d-88cc-7492620a3d6c","someone@stanford.edu":"6ce3090a22-11c8-3544-cc53-b91f8d257362"}
+
+# Point to the Neo4j database that will be used
+# to load the uuid database
+neo4j.server=bolt://hubmap-neo4j:7687
+neo4j.username=neo4j
+neo4j.password=123
