@@ -99,17 +99,17 @@ else
             # On test/stage/prod, copy the VERSION file and BUILD file to image
             if [[ "$1" != "localhost" && "$1" != "dev" && "$1" != "refactor" ]]; then
                 # Delete old VERSION and BUILD files if found
-                if [ -f "uuid-api/src/VERSION" ]; then
-                    rm -rf uuid-api/src/VERSION
+                if [ -f "uuid-api/VERSION" ]; then
+                    rm -rf uuid-api/VERSION
                 fi
                 
-                if [ -f "uuid-api/src/BUILD" ]; then
-                    rm -rf uuid-api/src/BUILD
+                if [ -f "uuid-api/BUILD" ]; then
+                    rm -rf uuid-api/BUILD
                 fi
                 
-                # Copy over the one files
-                cp ../VERSION uuid-api/src
-                cp ../BUILD uuid-api/src
+                # Copy over the BUILD and VERSION files
+                cp ../VERSION uuid-api
+                cp ../BUILD uuid-api
             fi
 
             docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api build
