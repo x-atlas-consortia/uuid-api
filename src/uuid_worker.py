@@ -22,7 +22,7 @@ MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
 INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
 INSERT_ANCESTOR_SQL = "INSERT INTO hm_ancestors (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
-UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
+#UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
 HMID_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
 HMID_NUM_CHARS=['2','3','4','5','6','7','8','9']                                                                                   
@@ -206,6 +206,8 @@ class UUIDWorker:
 		hexVal = hexVal.lower()
 		return hexVal
 	
+	
+	''' remove not needed
 	def updateUUIDs(self, uuids, display_ids):
 		if len(uuids) != len(display_ids):
 			raise Exception("The number of uuids must match the number of display ids")
@@ -251,6 +253,7 @@ class UUIDWorker:
 			with closing(dbConn.cursor()) as curs:
 				curs.executemany(UPDATE_SQL, updateVals)
 			dbConn.commit()				
+	'''
 	
 	def __create_submission_ids(self, num_to_gen, parent_id, entity_type, organ_code = None, lab_code = None):
 		parent_id = parent_id.strip().lower()
