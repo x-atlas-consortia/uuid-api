@@ -1,5 +1,7 @@
 # Ignore config files
 src/instance/app.cfg
+app.cfg
+reload_from_neo4j/reload.properties
 
 BUILD
 # mounted BUILD/VERSION file

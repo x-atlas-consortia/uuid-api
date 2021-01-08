@@ -1,5 +1,3 @@
-import sys
-import os
 import logging
 from flask import Response
 import threading
@@ -11,20 +9,28 @@ from hmdb import DBConn
 import copy
 
 # HuBMAP commons
-from hubmap_commons.string_helper import isBlank, isYes, listToCommaSeparated
+from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
+from hubmap_commons.provenance import Provenance
+
+SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET']
+
+MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK']
 
 MAX_GEN_IDS = 200
-INSERT_SQL = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
+INSERT_SQL = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
+INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
+INSERT_ANCESTOR_SQL = "INSERT INTO hm_ancestors (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
 UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
-DOI_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
-DOI_NUM_CHARS=['2','3','4','5','6','7','8','9']                                                                                   
+HMID_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
+HMID_NUM_CHARS=['2','3','4','5','6','7','8','9']                                                                                   
 HEX_CHARS=['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
-UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
+#UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
+UUID_SELECTS = "HM_UUID as hm_uuid, HUBMAP_BASE_ID as hubmap_base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, SUBMISSION_ID as submission_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
 
-
-def startsWithComponentPrefix(hmid):
+def 	startsWithComponentPrefix(hmid):
 	tidl = hmid.strip().lower()
 	if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt') or tidl.startswith('rtibd') or tidl.startswith('rtige') or tidl.startswith('rtinw') or tidl.startswith('rtist') or tidl.startswith('ttdct') or tidl.startswith('ttdhv') or tidl.startswith('ttdpd') or tidl.startswith('ttdst'):
 		return True
@@ -41,9 +47,9 @@ def isValidHMId(hmid):
 	if not (l == 10 or l == 32): return False
 	tid = tid.upper()
 	if l == 10:
-		if not set(tid[0:3]).issubset(DOI_NUM_CHARS): return False
-		if not set(tid[3:7]).issubset(DOI_ALPHA_CHARS): return False
-		if not set(tid[7:]).issubset(DOI_NUM_CHARS): return False
+		if not set(tid[0:3]).issubset(HMID_NUM_CHARS): return False
+		if not set(tid[3:7]).issubset(HMID_ALPHA_CHARS): return False
+		if not set(tid[7:]).issubset(HMID_NUM_CHARS): return False
 	if l == 32:
 		if not set(tid).issubset(HEX_CHARS): return False
 	return True
@@ -78,44 +84,41 @@ class UUIDWorker:
 		self.dbPassword = dbPassword
 		self.lock = threading.RLock()
 		self.hmdb = DBConn(self.dbHost, self.dbUsername, self.dbPassword, self.dbName)
+		self.prov_helper = Provenance(clientId, clientSecret, None)
+
+	def __resolve_lab_id(self, lab_id, user_id, user_email):
+		if isBlank(lab_id):
+			return None
+		check_id = lab_id.strip().lower()
+		r_val = {}
+		with closing(self.hmdb.getDBConnection()) as dbConn:
+			with closing(dbConn.cursor()) as curs:
+				curs.execute("select hm_uuid, dc_code from hm_data_centers where hm_uuid = '" + check_id + "' or dc_uuid = '" + check_id + "'")
+				result = curs.fetchone()
+				if result is None:
+					try:
+						lab = self.prov_helper.get_group_by_identifier(check_id)
+					except ValueError:
+						return Response("A valid lab with specified id not found id:" + check_id, 400)
+
+					if not 'tmc_prefix' in lab:
+						return Response("Lab with specified id:" + check_id + " does not contain a tmc_prefix.", 400)
+
+					uuid_json = self.newUUIDs([], "LAB", user_id, user_email, 1, gen_base_ids = False)
+					uuid_info = json.loads(uuid_json)
+					r_val['dc_code'] = lab['tmc_prefix']
+					r_val['hm_uuid'] = uuid_info[0]['uuid']
+					curs.execute("insert into hm_data_centers (HM_UUID, DC_UUID, DC_CODE) VALUES ('" + r_val['hm_uuid'] + "','" + check_id + "','" + r_val['dc_code'] + "')")
+					dbConn.commit()
+				else:
+					r_val['dc_code'] = result[1]
+					r_val['hm_uuid'] = result[0]
+		return r_val
 
 	def uuidPost(self, req, nIds):
 		userInfo = self.authHelper.getUserInfoUsingRequest(req)
-		hasHubmapIds = False
-		hmids = None
 		if isinstance(userInfo, Response):
 			return userInfo;
-
-		if not req.is_json:
-			return(Response("Invalid input, json required.", 400))
-		content = req.get_json()
-		if content is None or len(content) <= 0:
-			return(Response("Invalid input, uuid attributes required", 400))
-		if not 'entityType' in content or isBlank(content['entityType']):
-			return(Response("entityType is a required attribute", 400))
-		
-		if 'hubmap-ids' in content:
-			hmids = content['hubmap-ids']
-			if not (hmids is not None and isinstance(hmids, list) and len(hmids) > 0):			
-				hmids = None
-			
-		#if hasHubmapIds and not len(hmids) == nIds:
-		#	return(Response("Invalid input: Length of HuBMAP ID list must match the number of ids being generated"))
-		
-		entityType = content['entityType'].upper().strip()
-		parentId = None
-		if('parentId' in content and not isBlank(content['parentId'])):
-			parentId = content['parentId'].strip()
-
-		if(entityType == 'TISSUE' and parentId is None):
-			return(Response("parentId is a required attribute for TISSUE entities", 400))
-		
-		generateDOI = False
-		if('generateDOI' in content and isYes(content['generateDOI'])):
-			generateDOI = True
-
-		if not parentId is None and not self.uuidExists(parentId):
-			return(Response("Parent id " + parentId + " does not exist"), 400)
 
 		if not 'sub' in userInfo:
 			return Response("Unable to get user id (sub) via introspection", 400)
@@ -124,15 +127,55 @@ class UUIDWorker:
 		userEmail = None
 		if 'email' in userInfo:
 			userEmail = userInfo['email']
+
+		if not req.is_json:
+			return(Response("Invalid input, json required.", 400))
+		content = req.get_json()
+		if content is None or len(content) <= 0:
+			return(Response("Invalid input, uuid attributes required", 400))
+		if not 'entity_type' in content or isBlank(content['entity_type']):
+			return(Response("entity_type is a required attribute", 400))
 		
-		#rVal = []
-		#for x in range(nIds):
-		#	if hasHubmapIds:
-		#		rVal.append(self.newUUID(generateDOI, parentId, entityType, userId, userEmail, hmids[x]))
-		#	else:
-		#		rVal.append(self.newUUID(generateDOI, parentId, entityType, userId, userEmail))
-		#return rVal
-		return self.newUUIDs(generateDOI, parentId, entityType, userId, userEmail, nIds, hmids)
+		entityType = content['entity_type'].upper().strip()
+		organ_code = None
+		if 'organ_code' in content and not isBlank(content['organ_code']):
+			if not entityType == 'SAMPLE':
+				return(Response("Organ code " + content['organ_code'] + " found for entity type of " + entityType + ", but SAMPLE entity type required to specify organ.", 400))
+			organ_code = content['organ_code'].strip().upper()
+			
+		
+		parentIds = None
+		if('parent_ids' in content):
+			parentIds = content['parent_ids']
+
+		if(entityType in ANCESTOR_REQUIRED_ENTITY_TYPES and parentIds is None):
+			return(Response("parentId is a required attribute for entities " + ", ".join(ANCESTOR_REQUIRED_ENTITY_TYPES), 400))
+
+		lab_code = None
+		
+		if not parentIds is None:
+			if(entityType in SUBMISSION_ID_ENTITY_TYPES):
+				n_parents = len(parentIds)
+				if n_parents != 1:
+					return(Response("Entity type " + entityType + " requires a single ancestor id, " + str(n_parents) + " provided.", 400))
+
+		if entityType == "DONOR":
+			ancestor_ids = []
+			lab_info = self.__resolve_lab_id(parentIds[0], userId, userEmail)
+			if isinstance(lab_info, Response):
+				return lab_info
+			ancestor_ids.append(lab_info['hm_uuid'])
+			lab_code = lab_info['dc_code']
+		elif parentIds is None:
+			ancestor_ids = []
+		else:
+			ancestor_ids = parentIds
+							
+		for parentId in ancestor_ids:
+			if not self.uuid_exists(parentId):
+				return(Response("Parent id " + parentId + " does not exist", 400))
+
+		return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code = organ_code, lab_code = lab_code)
 
 	def uuidPut(self, req):
 		if not req.is_json:
@@ -152,13 +195,13 @@ class UUIDWorker:
 			return(Response("The length of the diplay-ids and hubmap-uuids arrays must be the same length", 400))
 		
 		return self.updateUUIDs(uuids, disp_ids)
-		 
-	def newUUIDTest(self, generateDOI, parentId, entityType, userId, userEmail):
-		return self.newUUID(generateDOI, parentId, entityType, userId, userEmail)
+
+	def newUUIDTest(self, parentIds, entityType, userId, userEmail):
+		return self.newUUIDs(parentIds, entityType, userId, userEmail)
 
 	def uuidGen(self):
 		hexVal = ""
-		for x in range(32):                                                                                                                
+		for _ in range(32):                                                                                                                
 			hexVal = hexVal + secrets.choice(HEX_CHARS)
 		hexVal = hexVal.lower()
 		return hexVal
@@ -208,74 +251,141 @@ class UUIDWorker:
 			with closing(dbConn.cursor()) as curs:
 				curs.executemany(UPDATE_SQL, updateVals)
 			dbConn.commit()				
+	
+	def __create_submission_ids(self, num_to_gen, parent_id, entity_type, organ_code = None, lab_code = None):
+		parent_id = parent_id.strip().lower()
+		with closing(self.hmdb.getDBConnection()) as dbConn:
+			with closing(dbConn.cursor()) as curs:
+				curs.execute("select entity_type, descendant_count, submission_id from hm_uuids where hm_uuid = '" + parent_id + "'")
+				results = curs.fetchone()
+				anc_entity_type = results[0]
+				desc_count = results[1]
+				anc_submission_id = results[2]
+				#a donor
+				if entity_type == 'DONOR':
+					if not anc_entity_type == 'LAB': 
+						return Response("An id can't be created for a DONOR because a DATA CENTER is required as the direct ancestor and an ancestor of type " + anc_entity_type + " found.", 400)
+					if isBlank(lab_code):
+						return Response("No data center code found data center with uuid:" + parent_id + ". Unable to generate an id for a DONOR.", 400)
+					r_val = []
+					for _ in range(0, num_to_gen):
+						desc_count = desc_count + 1
+						r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
+					curs.execute("update hm_uuids set descendant_count = " + str(desc_count) + " where hm_uuid = '" + parent_id + "'")
+					dbConn.commit()
+					return r_val
+				#an organ
+				elif entity_type == 'SAMPLE' and anc_entity_type == 'DONOR':
+					if isBlank(organ_code):
+						return Response("An id can't be created for a SAMPLE because the immediate ancestor is a DONOR and the SAMPLE was not supplied with an associated organ code (SAMPLE must be an organ to have a DONOR as a direct ancestor)", 400)
+					organ_code = organ_code.strip().upper()
+					curs.execute("select organ_count from hm_organs where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+					org_res = curs.fetchone()
+					if org_res is None:
+						curs.execute("insert into hm_organs (DONOR_UUID, ORGAN_CODE, ORGAN_COUNT) VALUE ('" + parent_id + "', '" + organ_code + "', 0)")
+						dbConn.commit()
+						org_count = 0
+					else:
+						org_count = org_res[0]
+					if not organ_code in MULTIPLE_ALLOWED_ORGANS:
+						if org_count >= 1:
+							return Response("Cannot add another organ of type " + organ_code + " to DONOR " + parent_id + " exists already.", 400)
+						if num_to_gen > 1:
+							return Response("Cannot create multiple submission ids for organ of type " + organ_code + ". " + str(num_to_gen) + " requested.")
+						org_count = 1
+						r_val = [anc_submission_id + "-" + organ_code]					
+					else:
+						r_val = []
+						for _ in range(0, num_to_gen):
+							org_count = org_count + 1
+							r_val.append(anc_submission_id + "-" + organ_code + padLeadingZeros(org_count, 2))
+					
+					curs.execute("update hm_organs set organ_count = " + str(org_count) + " where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+					dbConn.commit()
+					return r_val
 				
-	#generate multiple ids, one for each display id in the displayIds array
-	def newUUIDs(self, generateDOI, parentID, entityType, userId, userEmail, nIds, displayIds=None):
-		hasDisplayIds = False
-		if displayIds is not None and len(displayIds) > 0:
-			hasDisplayIds = True
-			if len(displayIds) != nIds:
-				raise Exception("Number of display ids to store " + str(len(displayIds)) + " does not match the number of ids being generated (" + str(nIds) + ")")
-			dupes = self.__findDupsInDB("HUBMAP_ID", displayIds)
-			if(dupes is not None and len(dupes) > 0):
-				raise Exception("Display ID(s) are not unique " + listToCommaSeparated(dupes))
-			
-			#check for duplicates in the list of display ids
-			valueSet = set()
-			dupes = []
-			for val in displayIds:
-				if val.strip(). upper() not in valueSet:
-					valueSet.add(val.strip().upper())
+				#error if remaining non-organ samples are not the descendants of a SAMPLE			
+				elif entity_type == 'SAMPLE' and not anc_entity_type == 'SAMPLE':
+					return Response("Cannot create a submission id for a SAMPLE with a direct ancestor of " + anc_entity_type)
+				elif entity_type == 'SAMPLE':
+					r_val = []
+					for _ in range(0, num_to_gen):
+						desc_count = desc_count + 1
+						r_val.append(anc_submission_id + "-" + str(desc_count))
+					curs.execute("update hm_uuids set descendant_count = " + str(desc_count) + " where hm_uuid = '" + parent_id + "'")
+					dbConn.commit()
+					return r_val
 				else:
-					dupes.append(val)
-			
-			if len(dupes) > 0:
-				raise Exception("Input Display ID(s) are duplicated: " + listToCommaSeparated(dupes))
-
+					return Response("Cannot create a submission id for an entity of type " + entity_type)
+		
+	#generate multiple ids, one for each display id in the displayIds array
+	def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code = None, lab_code = None, gen_base_ids = True):
+		#if entityType == 'DONOR':
+					
 		returnIds = []
 		now = time.strftime('%Y-%m-%d %H:%M:%S')
 		with self.lock:        
 			#generate in batches
-			displayIdCount = 0
 			previousUUIDs = set()
-			previousDOIs = set()
+			previous_hubmap_ids = set()
+			
+			gen_submission_ids = False
+			if entityType in SUBMISSION_ID_ENTITY_TYPES:
+				gen_submission_ids = True
+				
 			for i in range(0, nIds, MAX_GEN_IDS):
 				insertVals = []
+				insertParents = []
 				numToGen = min(MAX_GEN_IDS, nIds - i)
 				#generate uuids
-				uuids = self.__nUniqueIds(numToGen, self.uuidGen, "HMUUID", previousGeneratedIds=previousUUIDs)
-				if generateDOI:
-					dois = self.__nUniqueIds(numToGen, self.newDoi, "DOI_SUFFIX", previousGeneratedIds=previousDOIs)
+				uuids = self.__nUniqueIds(numToGen, self.uuidGen, "HM_UUID", previousGeneratedIds=previousUUIDs)
+				if gen_base_ids:
+					hubmap_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, "HUBMAP_BASE_ID", previousGeneratedIds=previous_hubmap_ids)
+				else:
+					hubmap_base_ids = [None] * numToGen
+
+				count_increase_q = None
+				submission_ids = None
+				if gen_submission_ids:
+					submission_ids = self.__create_submission_ids(numToGen, parentIDs[0], entityType, organ_code = organ_code, lab_code = lab_code)
+					if isinstance(submission_ids, Response):
+						return submission_ids
 				
 				for n in range(0, numToGen):
 					insUuid = uuids[n]
 					previousUUIDs.add(insUuid)
 					thisId = {"uuid":insUuid}
-					if generateDOI:
-						insDoi = dois[n]
-						previousDOIs.add(insDoi)
-						insDispDoi = self.__displayDoi(insDoi)
-						thisId["doi"] = insDoi
-						thisId["displayDoi"] = insDispDoi
+
+					if gen_base_ids:
+						ins_hubmap_base_id = hubmap_base_ids[n]
+						previous_hubmap_ids.add(ins_hubmap_base_id)
+						ins_display_hubmap_id = self.__display_hm_id(ins_hubmap_base_id)
+						thisId["hubmap_base_id"] = ins_hubmap_base_id
+						thisId["hubmap_id"] = ins_display_hubmap_id
 					else:
-						insDoi = None
+						ins_hubmap_base_id = None
 						
-					if hasDisplayIds:
-						insDisplayId = displayIds[displayIdCount]
-						if insDisplayId is not None:
-							insDisplayId = insDisplayId.strip().upper()
-						thisId['hubmapId'] = insDisplayId
-						displayIdCount = displayIdCount + 1
+					if gen_submission_ids:
+						thisId["submission_id"] = submission_ids[n]
+						insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail, submission_ids[n])
 					else:
-						insDisplayId = None
-						
+						insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail)
+												
 					returnIds.append(thisId)
-					insRow = (insUuid, insDoi, entityType, parentID, now, userId, userEmail, insDisplayId)
 					insertVals.append(insRow)
+
+					for parentId in parentIDs:
+						parRow = (insUuid, parentId)
+						insertParents.append(parRow)
 		
 				with closing(self.hmdb.getDBConnection()) as dbConn:
 					with closing(dbConn.cursor()) as curs:
-						curs.executemany(INSERT_SQL, insertVals)
+						if gen_submission_ids:
+							curs.executemany(INSERT_SQL_WITH_SUBMISSION_ID, insertVals)
+							curs.execute(count_increase_q)
+						else:
+							curs.executemany(INSERT_SQL, insertVals)
+						curs.executemany(INSERT_ANCESTOR_SQL, insertParents)
 					dbConn.commit()
 			
 		return json.dumps(returnIds)
@@ -289,7 +399,7 @@ class UUIDWorker:
 	def __nUniqueIds(self, nIds, idGenMethod, dbColumn, previousGeneratedIds=set(), iteration=1):
 		ids = set()
 		lclPreviousIds = copy.deepcopy(previousGeneratedIds)
-		for n in range(nIds):
+		for _ in range(nIds):
 			newId = idGenMethod()
 			count = 1
 			while (newId in ids or newId in lclPreviousIds) and count < 100:
@@ -301,10 +411,10 @@ class UUIDWorker:
 			lclPreviousIds.add(newId)
 		dupes = self.__findDupsInDB(dbColumn, ids)
 		if dupes is not None and len(dupes) > 0:
-			iter = iteration + 1
-			if iter > 100:
+			n_iter = iteration + 1
+			if n_iter > 100:
 				raise Exception("Unable to generate unique id(s) for " + dbColumn + " after 100 attempts.")
-			replacements = self.__nUniqueIds(len(dupes), idGenMethod, dbColumn, previousGeneratedIds=lclPreviousIds, iteration=iter)
+			replacements = self.__nUniqueIds(len(dupes), idGenMethod, dbColumn, previousGeneratedIds=lclPreviousIds, iteration=n_iter)
 			for val in dupes:
 				ids.remove(val[0])
 			for val in replacements:
@@ -327,10 +437,10 @@ class UUIDWorker:
 		
 		sql = "select " + dbColumn + " from ( "
 		first = True
-		for id in idSet:
+		for ex_id in idSet:
 			if first: first = False
 			else: sql = sql + " UNION ALL "
-			sql = sql + "(select '" + id + "' as " + dbColumn + ")"
+			sql = sql + "(select '" + ex_id + "' as " + dbColumn + ")"
 		sql = sql + ") as list left join hm_uuids using (" + dbColumn + ") where hm_uuids." + dbColumn + " is null"
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
@@ -338,79 +448,21 @@ class UUIDWorker:
 				excluded = curs.fetchall()
 		
 		return excluded	
-	
-	
-	def newUUID(self, generateDOI, parentID, entityType, userId, userEmail, hubmapId=None):
-		doi = None
-		hmid = self.uuidGen() #uuid.uuid4().hex
-		if generateDOI:
-			doi = self.newDoi()
 
-		with self.lock:
-			count = 0
-			while(self.uuidExists(hmid) and count < 100):
-				hmid = self.uuidGen() #uuid.uuid4().hex
-				count = count + 1
-			if count == 100:
-				raise Exception("Unable to generate a unique uuid after 100 attempts")
-			if generateDOI:
-				count = 0;
-				while(self.doiExists(doi) and count < 100):
-					doi = self.newDoi()
-					count = count + 1
-			if count == 100:
-				raise Exception("Unable to generate a unique doi id after 100 attempts")					
-			now = time.strftime('%Y-%m-%d %H:%M:%S')
-			sql = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
-			vals = (hmid, doi, entityType, parentID, now, userId, userEmail, hubmapId)
-			with closing(self.hmdb.getDBConnection()) as dbConn:
-				with closing(dbConn.cursor()) as curs:
-					curs.execute(sql, vals)
-				dbConn.commit()
-
-		if generateDOI:
-			dispDoi = self.__displayDoi(doi)
-			if hubmapId is None:
-				rVal = {
-					"displayDoi": dispDoi,
-					"doi": doi,
-					"uuid": hmid
-					}
-			else:
-				rVal = {
-					"displayDoi": dispDoi,
-					"doi": doi,
-					"uuid": hmid,
-					"hubmapId": hubmapId
-					}				
-			#return jsonify(uuid=hmid, doi=doi, displayDoi=dispDoi)
-		else:
-			if hubmapId is None:
-				rVal = {
-					"uuid":hmid
-					}
-			else:
-				rVal = {
-					"uuid":hmid,
-					"hubampId": hubmapId
-					}				
-			#return jsonify(uuid=hmid)
-		return rVal
-	
-	def __displayDoi(self, doiSuffix):
-		dispDoi= 'HBM' + doiSuffix[0:3] + '.' + doiSuffix[3:7] + '.' + doiSuffix[7:]
-		return dispDoi
-
-	def newDoi(self):
+	def __display_hm_id(self, hm_base_id):
+		hubmap_id = 'HBM' + hm_base_id[0:3] + '.' + hm_base_id[3:7] + '.' + hm_base_id[7:]
+		return hubmap_id
+		
+	def hmidGen(self):
 		nums1 = ''                                                                                                                        
 		nums2 = ''                                                                                                                        
 		alphs = ''                                                                                                                        
-		for x in range(3):                                                                                                                
-			nums1 = nums1 + secrets.choice(DOI_NUM_CHARS) #[random.randint(0,len(DOI_NUM_CHARS)-1)]                                                           
-		for x in range(3):                                                                                                                
-			nums2 = nums2 + secrets.choice(DOI_NUM_CHARS) #[random.randint(0,len(DOI_NUM_CHARS)-1)]                                                           
-		for x in range(4):                                                                                                                
-			alphs = alphs + secrets.choice(DOI_ALPHA_CHARS) #[random.randint(0,len(DOI_ALPHA_CHARS)-1)]                                                       
+		for _ in range(3):                                                                                                                
+			nums1 = nums1 + secrets.choice(HMID_NUM_CHARS) #[random.randint(0,len(DOI_NUM_CHARS)-1)]                                                           
+		for _ in range(3):                                                                                                                
+			nums2 = nums2 + secrets.choice(HMID_NUM_CHARS) #[random.randint(0,len(DOI_NUM_CHARS)-1)]                                                           
+		for _ in range(4):                                                                                                                
+			alphs = alphs + secrets.choice(HMID_ALPHA_CHARS) #[random.randint(0,len(DOI_ALPHA_CHARS)-1)]                                                       
 
 		val = nums1 + alphs + nums2   
 		return(val)
@@ -420,43 +472,80 @@ class UUIDWorker:
 				return Response("Invalid HuBMAP Id", 400)
 			tid = stripHMid(hmid)
 			if startsWithComponentPrefix(hmid):			
-				return self.hmidExists(hmid.strip())			
+				return self.submission_id_exists(hmid.strip())		
 			elif len(tid) == 10:
-				return self.doiExists(tid.upper())
+				return self.base_id_exists(tid.upper())
 			elif len(tid) == 32:
-				return self.uuidExists(tid.lower())
+				return self.uuid_exists(tid.lower())
 			else:
 				return Response("Invalid HuBMAP Id (or empty or bad length)", 400)	
 
 	
+	#convert csv list of ancestor ids to a list
+	#convert hubmap base id to a hubmap id (display version)
+	def _convert_result_id_array(self, results, hmid):	
+		if isinstance(results, list):
+			asize = len(results)
+			if asize == 0:
+				record = None
+			elif asize == 1:
+				record = results[0]
+				if not 'ancestor_ids' in record:
+					return record
+				ancestor_ids = record['ancestor_ids']
+				if ancestor_ids is None or ancestor_ids.strip() == '':
+					record.pop('ancestor_ids', '')
+				elif isinstance(ancestor_ids, str):
+					record['ancestor_ids'] = ancestor_ids.split(',')
+					if len(record['ancestor_ids']) == 1:
+						record['ancestor_id'] = record['ancestor_ids'][0]
+				else:
+					raise Exception("Unknown ancestor type for id:" + hmid)
+				
+				if 'hubmap_base_id' in record:
+					if not record['hubmap_base_id'].strip() == '':
+						record['hubmap_id'] = self.__display_hm_id(record['hubmap_base_id'])
+					record.pop('hubmap_base_id', '')		
+			else:
+				raise Exception("Multiple results exist for id:" + hmid)
+	
+		return record
+	
 	def getIdInfo(self, hmid):
 		if not isValidHMId(hmid):
-			return Response("Invalid HuBMAP Id", 400)
+			return Response(hmid + " is not a valid id format", 400)
 		tidl = hmid.strip().lower()
 		tid = stripHMid(hmid)
 		if startsWithComponentPrefix(hmid):
-			sql = "select " + UUID_SELECTS + " from hm_uuids where lower(hubmap_id) ='" + tidl + "'"
+			sql = "select " + UUID_SELECTS + " from hm_uuids inner join hm_ancestors on hm_ancestors.descendant_uuid = hm_uuids.hm_uuid where lower(submission_id) ='" + tidl + "'"
 		elif len(tid) == 10:
-			sql = "select " + UUID_SELECTS + " from hm_uuids where doi_suffix ='" + tid + "'"
+			sql = "select " + UUID_SELECTS + " from hm_uuids inner join hm_ancestors on hm_ancestors.descendant_uuid = hm_uuids.hm_uuid where hubmap_base_id ='" + tid + "'"
 		elif len(tid) == 32:
-			sql = "select " + UUID_SELECTS + " from hm_uuids where hmuuid ='" + tid + "'"
+			sql = "select " + UUID_SELECTS + " from hm_uuids inner join hm_ancestors on hm_ancestors.descendant_uuid = hm_uuids.hm_uuid where hm_uuid ='" + tid + "'"
 		else:
-			return Response("Invalid HuBMAP Id (empty or bad length)", 400)
+			return Response("Invalid id (empty or bad length)", 400)
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
 				curs.execute(sql)
 				results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in curs.fetchall()]
 
 		# In Python, empty sequences (strings, lists, tuples) are false
-		if not results:
+		if results is None or not results:
 			return Response ("Could not find the target id: " + hmid, 404)
-
-		return json.dumps(results, indent=4, sort_keys=True, default=str)
+		if isinstance(results, list) and (len(results) == 0):
+			return Response ("Could not find the target id: " + hmid, 404)
+		if not 'hm_uuid' in results[0]:
+			return Response ("Could not find the target id: " + hmid, 404)
+		if results[0]['hm_uuid'] is None:
+			return Response ("Could not find the target id: " + hmid, 404)
+		
+		rdict = self._convert_result_id_array(results, hmid)
+		return json.dumps(rdict, indent=4, sort_keys=True, default=str)
 								
-	def uuidExists(self, hmid):
+	def uuid_exists(self, hmid):
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
-				curs.execute("select count(*) from hm_uuids where hmuuid = '" + hmid + "'")
+				curs.execute("select count(*) from hm_uuids where hm_uuid = '" + hmid + "'")
 				res = curs.fetchone()
 
 		if(res is None or len(res) == 0): return False
@@ -464,20 +553,41 @@ class UUIDWorker:
 		if(res[0] == 0): return False
 		raise Exception("Multiple uuids found matching " + hmid)
 	
-	def doiExists(self, doi):
+#	def uuidsExist(self, uuids):
+#		uuid_list = '('
+#		first = True
+#		comma = ''
+#		for uuid in uuids:
+#			uuid_list = uuid_list + comma + "'" + uuid.strip() + "'"
+#			if first:
+#				first = False
+#				comma = ','
+#		uuid_list = uuid_list + ')'
+#
+#		with closing(self.hmdb.getDBConnection()) as dbConn:
+#			with closing(dbConn.cursor()) as curs:
+#				curs.execute("select count(*) from hm_uuids where hm_uuid in " + uuid_list)
+#				res = curs.fetchone()
+#
+#		if(res is None or len(res) == 0): return False
+#		count = res[0]
+#		if count != len(uuids): return False
+#		return True
+	
+	def base_id_exists(self, base_id):
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
-				curs.execute("select count(*) from hm_uuids where doi_suffix = '" + doi + "'")
+				curs.execute("select count(*) from hm_uuids where hubmap_base_id = '" + base_id + "'")
 				res = curs.fetchone()
 		if(res is None or len(res) == 0): return False
 		if(res[0] == 1): return True
 		if(res[0] == 0): return False
-		raise Exception("Multiple dois found matching " + doi)
+		raise Exception("Multiple hubmap base ids found matching " + base_id)
 		
-	def hmidExists(self, hmid):
+	def submission_id_exists(self, hmid):
 		with closing(self.hmdb.getDBConnection()) as dbConn:
 			with closing(dbConn.cursor()) as curs:
-				curs.execute("select count(*) from hm_uuids where hubmap_id = '" + hmid + "'")
+				curs.execute("select count(*) from hm_uuids where submission_id = '" + hmid + "'")
 				res = curs.fetchone()
 		if(res is None or len(res) == 0): return False
 		if(res[0] == 1): return True
@@ -500,3 +610,48 @@ class UUIDWorker:
 		except Exception as e:
 			self.logger.error(e, exc_info=True)
 			return False
+
+'''	
+	def newUUID(self, parentID, entityType, userId, userEmail, submissionId=None):
+		uuid = self.uuidGen() #uuid.uuid4().hex
+		hubmap_id = self.hmidGen()
+
+		with self.lock:
+			count = 0
+			while(self.uuidExists(uuid) and count < 100):
+				uuid = self.uuidGen() #uuid.uuid4().hex
+				count = count + 1
+			if count == 100:
+				raise Exception("Unable to generate a unique uuid after 100 attempts")
+			
+			count = 0;
+			while(self.doiExists(hubmap_id) and count < 100):
+				hubmap_id = self.hmidGen()
+				count = count + 1
+			if count == 100:
+				raise Exception("Unable to generate a unique hubmap id after 100 attempts")					
+			now = time.strftime('%Y-%m-%d %H:%M:%S')
+			sql = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
+			vals = (uuid, hubmap_id, entityType, parentID, now, userId, userEmail, submissionId)
+			with closing(self.hmdb.getDBConnection()) as dbConn:
+				with closing(dbConn.cursor()) as curs:
+					curs.execute(sql, vals)
+				dbConn.commit()
+
+		disp_hubmap_id = self.__displayDoi(hubmap_id)
+		if submissionId is None:
+			rVal = {
+				"displayDoi": disp_hubmap_id,
+				"doi": hubmap_id,
+				"uuid": uuid
+				}
+		else:
+			rVal = {
+				"displayDoi": disp_hubmap_id,
+				"doi": hubmap_id,
+				"uuid": uuid,
+				"hubmapId": submissionId
+				}				
+		return rVal
+
+'''

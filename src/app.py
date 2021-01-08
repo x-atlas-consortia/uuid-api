@@ -82,18 +82,30 @@ def status():
 
 '''
 POST arguments in json
-  entityType- required: the type of entity, DONOR, TISSUE, DATASET
-  generateDOI- optional, defaults to false
-  parentId- required for entity type of TISSUE, optional for all others
-  hubmap-ids- optional, an array of ids to associate and store with the
-              generated ids. If provide, the length of this array must
-              match the sample_count argument
-              
+  entity_type- required: the type of entity, DONOR, SAMPLE, DATASET
+   parent_ids- required for entity types of SAMPLE, DONOR and DATASET
+               an array of UUIDs for the ancestors of the new entity
+               For SAMPLEs and DONORs a single uuid is required (one entry in the array)
+               and multiple ids are not allowed (SAMPLEs and DONORs are required to 
+               have a single ancestor, not multiple).  For DATASETs at least one ancestor
+               UUID is required, but multiple can be specified. (A DATASET can be derived
+               from multiple SAMPLEs or DATASETs.) 
+     organ_id- required only in the case where an id is being generated for a SAMPLE that
+               has a DONOR as a direct ancestor.  Must be one of the codes from:
+               https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
+                 
  Query (in url) argument
-   sample_count optional, the number of ids to generate.  If omitted,
+   entity_count optional, the number of ids to generate.  If omitted,
                 defaults to 1 
               
- curl example:  curl -d '{"entityType":"BILL-TEST","generateDOI":"true","hubmap-ids":["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]   }' -H "Content-Type: application/json" -H "Authorization: Bearer AgX07PVbz9Wb6WDK3QvP9p23j2vWV7bYnMGBvaQxQQGEY5MjJEIwC8x3vwqYmzwEzPw93qWYeGpEkKu4nOkPgs7VKQ" -X POST http://localhost:5000/hmuuid?sample_count=7  
+    For 
+    
+ REMOVED: generateDOI- optional, defaults to false
+          submission_ids- optional, an array of ids to associate and store with the
+            generated ids. If provide, the length of this array must
+            match the entity_count argument
+      
+ curl example:  curl -d '{"entityType":"BILL-TEST","generateDOI":"true","hubmap-ids":["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]   }' -H "Content-Type: application/json" -H "Authorization: Bearer AgX07PVbz9Wb6WDK3QvP9p23j2vWV7bYnMGBvaQxQQGEY5MjJEIwC8x3vwqYmzwEzPw93qWYeGpEkKu4nOkPgs7VKQ" -X POST http://localhost:5000/hmuuid?entity_count=7  
 '''
 @app.route('/hmuuid', methods=["POST"])
 @secured(groups="HuBMAP-read")
@@ -102,8 +114,8 @@ def add_hmuuid():
     global logger
     try:
         if request.method == "POST":
-            if 'sample_count' in request.args:
-                nArgs = request.args.get('sample_count')
+            if 'entity_count' in request.args:
+                nArgs = request.args.get('entity_count')
                 if isBlank(nArgs) or not nArgs.strip().isnumeric():
                     return Response("Sample count must be an integer ", 400)
                 rjson = worker.uuidPost(request, int(nArgs))
@@ -149,6 +161,7 @@ PUT arguments in json
    
  curl example:  curl -d '{"hubmap-uuids":["32ae6d81bc9df2d62a550c62c02df39a", "3a2bdd52946a14081d448261c7b52bb2"], "display-ids"["lab-id-1","lab-id-2"] }' -H "Content-Type: application/json" -H "Authorization: Bearer AgX07PVbz9Wb6WDK3QvP9p23j2vWV7bYnMGBvaQxQQGEY5MjJEIwC8x3vwqYmzwEzPw93qWYeGpEkKu4nOkPgs7VKQ" -X PUT http://localhost:5000/hmuuid  
 '''
+'''
 @app.route('/hmuuid', methods=["PUT"])
 @secured(groups="HuBMAP-read")
 def update_hmuuid():
@@ -167,6 +180,7 @@ def update_hmuuid():
         eMsg = str(e)
         logger.error(e, exc_info=True)
         return(Response("Unexpected error: " + eMsg, 500))
+'''
 
 @app.route('/hmuuid/<hmuuid>/exists', methods=["GET"])
 @secured(groups="HuBMAP-read")
