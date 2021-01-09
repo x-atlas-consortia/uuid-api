@@ -11,7 +11,9 @@ import copy
 # HuBMAP commons
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
-from hubmap_commons.provenance import Provenance
+
+# Deprecate the use of Provenance
+#from hubmap_commons.provenance import Provenance
 
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET']
@@ -84,7 +86,9 @@ class UUIDWorker:
 		self.dbPassword = dbPassword
 		self.lock = threading.RLock()
 		self.hmdb = DBConn(self.dbHost, self.dbUsername, self.dbPassword, self.dbName)
-		self.prov_helper = Provenance(clientId, clientSecret, None)
+		
+		# Deprecate the use of Provenance
+		#self.prov_helper = Provenance(clientId, clientSecret, None)
 
 	def __resolve_lab_id(self, lab_id, user_id, user_email):
 		if isBlank(lab_id):
@@ -97,7 +101,13 @@ class UUIDWorker:
 				result = curs.fetchone()
 				if result is None:
 					try:
-						lab = self.prov_helper.get_group_by_identifier(check_id)
+						# Deprecate the use of Provenance
+						#lab = self.prov_helper.get_group_by_identifier(check_id)
+
+						# Get the globus groups info based on the groups json file in commons package
+                        globus_groups_info = globus_groups.get_globus_groups_info()
+                        groups_by_tmc_prefix_dict = globus_groups_info['by_tmc_prefix']
+                        lab = groups_by_tmc_prefix_dict[check_id]
 					except ValueError:
 						return Response("A valid lab with specified id not found id:" + check_id, 400)
 
