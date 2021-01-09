@@ -140,8 +140,11 @@ def get_hmuuid(hmuuid):
     global logger
     try:
         if request.method == "GET":
+            # The info is a pretty print json string
             info = worker.getIdInfo(hmuuid)
-            return info
+
+            # Add the json MIME header in response
+            return Response(response=info, mimetype="application/json")
         else:
             return Response ("Invalid request use GET to retrieve UUID information", 500)
     except Exception as e:                                                                                                            
