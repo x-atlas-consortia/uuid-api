@@ -14,7 +14,10 @@ from uuid_worker import UUIDWorker
 from contextlib import closing
 import mysql
 from datetime import datetime
+
+# HuBMAP commons
 from hubmap_commons.string_helper import isBlank
+from hubmap_commons import globus_groups
 
 # Deprecate the use of Provenance
 #from hubmap_commons.provenance import Provenance
