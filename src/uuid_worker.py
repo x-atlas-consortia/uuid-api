@@ -11,6 +11,7 @@ import copy
 # HuBMAP commons
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
+from hubmap_commons import globus_groups
 
 # Deprecate the use of Provenance
 #from hubmap_commons.provenance import Provenance
