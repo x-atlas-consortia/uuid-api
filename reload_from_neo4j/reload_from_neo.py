@@ -15,7 +15,9 @@ from contextlib import closing
 import mysql
 from datetime import datetime
 from hubmap_commons.string_helper import isBlank
-from hubmap_commons.provenance import Provenance
+
+# Deprecate the use of Provenance
+#from hubmap_commons.provenance import Provenance
 
 UUID_DB_TABLE_NAMES = ['hm_uuids', 'hm_ancestors', 'hm_organs', 'hm_data_centers']
 LABS_CYPHER = "match (l:Lab) return l.uuid as labid, l.next_identifier, l.submission_id as lab_code"
@@ -318,7 +320,13 @@ class ReloadUUIDFromNeo4j:
                 if result is None:
                     prov_helper = Provenance("a", "b", "c")
                     try:
-                        lab = prov_helper.get_group_by_identifier(check_id)
+                        # Deprecate the use of Provenance, use the new globus_groups module - Zhou
+                        #lab = prov_helper.get_group_by_identifier(check_id)
+
+                        # Get the globus groups info based on the groups json file in commons package
+                        globus_groups_info = globus_groups.get_globus_groups_info()
+                        groups_by_tmc_prefix_dict = globus_groups_info['by_tmc_prefix']
+                        lab = groups_by_tmc_prefix_dict[check_id]
                     except ValueError:
                         return Response("")
                     if not 'tmc_prefix' in lab:
