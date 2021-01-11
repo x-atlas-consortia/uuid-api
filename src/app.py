@@ -143,6 +143,10 @@ def get_hmuuid(hmuuid):
             # The info is a pretty print json string
             info = worker.getIdInfo(hmuuid)
 
+            # if getIdInfo returns a Response, it is sending an error back
+            if isinstance(info, Response):
+                return info
+
             # Add the json MIME header in response
             return Response(response=info, mimetype="application/json")
         else:
