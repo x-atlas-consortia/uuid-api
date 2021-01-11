@@ -108,7 +108,10 @@ class UUIDWorker:
                         # Get the globus groups info based on the groups json file in commons package
                         globus_groups_info = globus_groups.get_globus_groups_info()
                         groups_by_tmc_prefix_dict = globus_groups_info['by_tmc_prefix']
-                        lab = groups_by_tmc_prefix_dict[check_id]
+                        if not check_id in groups_by_tmc_prefix_dict:
+                            lab = {}
+                        else:
+                            lab = groups_by_tmc_prefix_dict[check_id]
                     except ValueError:
                         return Response("A valid lab with specified id not found id:" + check_id, 400)
 
