@@ -90,7 +90,7 @@ POST arguments in json
                have a single ancestor, not multiple).  For DATASETs at least one ancestor
                UUID is required, but multiple can be specified. (A DATASET can be derived
                from multiple SAMPLEs or DATASETs.) 
-     organ_id- required only in the case where an id is being generated for a SAMPLE that
+     organ_code- required only in the case where an id is being generated for a SAMPLE that
                has a DONOR as a direct ancestor.  Must be one of the codes from:
                https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
                  
