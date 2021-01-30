@@ -16,8 +16,9 @@ from hubmap_commons import globus_groups
 # Deprecate the use of Provenance
 #from hubmap_commons.provenance import Provenance
 
+HUBMAP_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION']
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
-ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE']
 
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK']
 
@@ -25,6 +26,8 @@ MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
 INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
 INSERT_ANCESTOR_SQL = "INSERT INTO hm_ancestors (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
+INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM, SIZE) VALUES (%s, %s, %s, %s)"
+#INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM) VALUES (%s, %s, %s)"
 #UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
 HMID_ALPHA_CHARS=['B','C','D','F','G','H','J','K','L','M','N','P','Q','R','S','T','V','W','X','Z']                 
@@ -33,7 +36,7 @@ HEX_CHARS=['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
 #UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
 UUID_SELECTS = "HM_UUID as hm_uuid, HUBMAP_BASE_ID as hubmap_base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, SUBMISSION_ID as submission_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
 
-def     startsWithComponentPrefix(hmid):
+def startsWithComponentPrefix(hmid):
     tidl = hmid.strip().lower()
     if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt') or tidl.startswith('rtibd') or tidl.startswith('rtige') or tidl.startswith('rtinw') or tidl.startswith('rtist') or tidl.startswith('ttdct') or tidl.startswith('ttdhv') or tidl.startswith('ttdpd') or tidl.startswith('ttdst'):
         return True
@@ -184,13 +187,27 @@ class UUIDWorker:
             ancestor_ids = []
         else:
             ancestor_ids = parentIds
-                            
+        
+        file_info = None
+        if entityType == "FILE":
+            if not 'file_info' in content:
+                return(Response("Entity type of FILE requires a file_info array provide in the request body.", 400))
+            file_info = content['file_info']
+            if not isinstance(file_info, list):
+                return(Response("file_info attribute must be a list", 400))
+            if not len(file_info) == nIds:
+                return(Response("number file_info list must contain the same number of entries as ids being generated " + nIds))
+            for fi in file_info:
+                if not 'path' in fi or isBlank(fi['path']):
+                    return(Response("The 'path' attribute is required for each file_info entry", 400))
+    
         for parentId in ancestor_ids:
             if not self.uuid_exists(parentId):
                 return(Response("Parent id " + parentId + " does not exist", 400))
 
-        return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code = organ_code, lab_code = lab_code)
+        return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code = organ_code, lab_code = lab_code, file_info_array = file_info)
 
+    '''
     def uuidPut(self, req):
         if not req.is_json:
             return(Response("Invalid input, json required.", 400))
@@ -209,6 +226,7 @@ class UUIDWorker:
             return(Response("The length of the diplay-ids and hubmap-uuids arrays must be the same length", 400))
         
         return self.updateUUIDs(uuids, disp_ids)
+    '''
 
     def newUUIDTest(self, parentIds, entityType, userId, userEmail):
         return self.newUUIDs(parentIds, entityType, userId, userEmail)
@@ -219,55 +237,6 @@ class UUIDWorker:
             hexVal = hexVal + secrets.choice(HEX_CHARS)
         hexVal = hexVal.lower()
         return hexVal
-    
-    
-    ''' remove not needed
-    def updateUUIDs(self, uuids, display_ids):
-        if len(uuids) != len(display_ids):
-            raise Exception("The number of uuids must match the number of display ids")
-        
-        idSet = set()
-        for uuid in uuids:
-            uuidt = uuid.lower().strip()
-            if uuidt in idSet:
-                raise Exception("During UUID update the uuid " + uuid + " is contained multiple times in the hubmap-uuids array")
-            idSet.add(uuidt)
-        
-        idSet = set()
-        for dispId in display_ids:
-            disIdT = dispId.lower().strip()
-            if disIdT in idSet:
-                raise Exception("During UUID update the display id " + dispId + " is contained multiple times in the diplay-ids array")
-            idSet.add(disIdT)
-            
-        excluded = self.__findExclusionsInDB("HMUUID", uuids)
-        if(excluded is not None and len(excluded) > 0):
-            raise Exception("UUIDs not contained in the id database " + listToCommaSeparated(excluded))
-        
-        #only id records that have a null display id can be updated
-        sql = "select hmuuid from hm_uuids where hmuuid in (" + listToCommaSeparated(uuids, "'", True) + ") and hubmap_id is not null"
-        with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
-                nonNull = curs.fetchall()       
-        if nonNull is not None and len(nonNull) > 0:
-            raise Exception("Some uuids do not have null display ids: " + listToCommaSeparated(nonNull))
-        
-        #if there are any display ids that match what we're updating to send an error
-        dupes = self.__findDupsInDB("HUBMAP_ID", display_ids)
-        if(dupes is not None and len(dupes) > 0):
-            raise Exception("Display ID(s) are not unique " + listToCommaSeparated(dupes))
-        
-        updateVals = []
-        for uuid, dispid in zip(uuids, display_ids):
-            updateRow = (dispid, uuid)
-            updateVals.append(updateRow)
-        
-        with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
-                curs.executemany(UPDATE_SQL, updateVals)
-            dbConn.commit()             
-    '''
     
     def __create_submission_ids(self, num_to_gen, parent_id, entity_type, organ_code = None, lab_code = None):
         parent_id = parent_id.strip().lower()
@@ -336,11 +305,15 @@ class UUIDWorker:
                     return Response("Cannot create a submission id for an entity of type " + entity_type)
         
     #generate multiple ids, one for each display id in the displayIds array
-    def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code = None, lab_code = None, gen_base_ids = True):
+
+    def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code = None, lab_code = None, file_info_array = None):
         #if entityType == 'DONOR':
-                    
+        gen_base_ids = entityType in HUBMAP_ID_ENTITY_TYPES
         returnIds = []
         now = time.strftime('%Y-%m-%d %H:%M:%S')
+        store_file_info = False
+        if entityType == 'FILE':
+            store_file_info = True
         with self.lock:        
             #generate in batches
             previousUUIDs = set()
@@ -352,6 +325,7 @@ class UUIDWorker:
                 
             for i in range(0, nIds, MAX_GEN_IDS):
                 insertVals = []
+                file_info_insert_vals = []
                 insertParents = []
                 numToGen = min(MAX_GEN_IDS, nIds - i)
                 #generate uuids
@@ -387,7 +361,20 @@ class UUIDWorker:
                         insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail, submission_ids[n])
                     else:
                         insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail)
-                                                
+                    
+                    if store_file_info:
+                        file_path = file_info_array[i]['path']
+                        file_checksum = None
+                        file_size = None
+                        if 'checksum' in file_info_array[i]:
+                            file_checksum = file_info_array[i]['checksum']
+                        if 'size' in file_info_array[i]:
+                            file_size = file_info_array[i]['size']
+                        file_info_ins_row = (insUuid, file_path, file_checksum, file_size)    
+                        #file_info_ins_row = (insUuid, file_path, file_checksum)
+                        file_info_insert_vals.append(file_info_ins_row)
+                        thisId['file_path'] = file_path
+                        
                     returnIds.append(thisId)
                     insertVals.append(insRow)
 
@@ -402,6 +389,9 @@ class UUIDWorker:
                             curs.execute(count_increase_q)
                         else:
                             curs.executemany(INSERT_SQL, insertVals)
+                        if store_file_info:
+                            curs.executemany(INSERT_FILE_INFO_SQL, file_info_insert_vals)
+                            
                         curs.executemany(INSERT_ANCESTOR_SQL, insertParents)
                     dbConn.commit()
             
@@ -558,7 +548,31 @@ class UUIDWorker:
         
         rdict = self._convert_result_id_array(results, hmid)
         return json.dumps(rdict, indent=4, sort_keys=True, default=str)
-                                
+    
+    def getFileIdInfo(self, fid):
+        check_id = fid.strip()
+        if isBlank(check_id) or len(check_id) != 32:
+            return Response("Invalid file id format.  32 digit hex only.", 400)
+        sql = "select hm_uuid, path, checksum, size, ancestor_uuid from hm_files inner join hm_ancestors on hm_ancestors.descendant_uuid = hm_files.hm_uuid where hm_uuid = '" + check_id + "'"
+        with closing(self.hmdb.getDBConnection()) as dbConn:
+            with closing(dbConn.cursor()) as curs:
+                curs.execute(sql)
+                results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in curs.fetchall()]
+                
+        if results is None or not results:
+            return Response ("Could not find the target id: " + fid, 404)
+        if isinstance(results, list) and (len(results) == 0):
+            return Response ("Could not find the target id: " + fid, 404)
+        if not 'hm_uuid' in results[0]:
+            return Response ("Could not find the target id: " + fid, 404)
+        if results[0]['hm_uuid'] is None:
+            return Response ("Could not find the target id: " + fid, 404)
+                    
+        rdict = self._convert_result_id_array(results, check_id)
+        if 'checksum' in rdict and rdict['checksum'] is None: rdict.pop('checksum')
+        if 'size' in rdict and rdict['size'] is None: rdict.pop('size') 
+        return json.dumps(rdict, indent=4, sort_keys=True, default=str)
+                        
     def uuid_exists(self, hmid):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:

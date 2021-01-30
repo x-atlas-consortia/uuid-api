@@ -90,22 +90,32 @@ POST arguments in json
                have a single ancestor, not multiple).  For DATASETs at least one ancestor
                UUID is required, but multiple can be specified. (A DATASET can be derived
                from multiple SAMPLEs or DATASETs.) 
-     organ_code- required only in the case where an id is being generated for a SAMPLE that
+   organ_code- required only in the case where an id is being generated for a SAMPLE that
                has a DONOR as a direct ancestor.  Must be one of the codes from:
                https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
+   file_info-  required only if the entity type is FILE. A list/array of information about each
+               file that requires an id to be generated for it. The size of this array is required
+               to match the optional URL argument,  entity_count (or be 1 in the case where this argument
+               is defaulted to 1).
+               Each file info element should contain:
+                     path- required: the path to the file in storage.  For the purposes of the
+                                     UUID system this can be a full path or relative, but it is
+                                     recommended that a relative path be used.
+                 checksum- optional: An MD5 checksum/hash of the file
+                     size- optional: The size of the file as an integer
+   
+
                  
  Query (in url) argument
    entity_count optional, the number of ids to generate.  If omitted,
                 defaults to 1 
               
-    For 
     
  REMOVED: generateDOI- optional, defaults to false
           submission_ids- optional, an array of ids to associate and store with the
             generated ids. If provide, the length of this array must
             match the entity_count argument
       
- curl example:  curl -d '{"entityType":"BILL-TEST","generateDOI":"true","hubmap-ids":["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]   }' -H "Content-Type: application/json" -H "Authorization: Bearer AgX07PVbz9Wb6WDK3QvP9p23j2vWV7bYnMGBvaQxQQGEY5MjJEIwC8x3vwqYmzwEzPw93qWYeGpEkKu4nOkPgs7VKQ" -X POST http://localhost:5000/hmuuid?entity_count=7  
 '''
 @app.route('/hmuuid', methods=["POST"])
 @secured(groups="HuBMAP-read")
@@ -156,39 +166,6 @@ def get_hmuuid(hmuuid):
         logger.error(e, exc_info=True)                                                                                                
         return(Response("Unexpected error: " + eMsg, 500))    
 
-'''
-Update id records to include display ids 
-
-PUT arguments in json
-   hubmap-uuids- an array of uuids to update
-    display-ids- an array of display ids to update for the associated (same order)
-                 records of the uuids passed in the hubmap-uuids array.
-
-   Only id records that currently DO NOT have an associated display-id can be updated.
-   
- curl example:  curl -d '{"hubmap-uuids":["32ae6d81bc9df2d62a550c62c02df39a", "3a2bdd52946a14081d448261c7b52bb2"], "display-ids"["lab-id-1","lab-id-2"] }' -H "Content-Type: application/json" -H "Authorization: Bearer AgX07PVbz9Wb6WDK3QvP9p23j2vWV7bYnMGBvaQxQQGEY5MjJEIwC8x3vwqYmzwEzPw93qWYeGpEkKu4nOkPgs7VKQ" -X PUT http://localhost:5000/hmuuid  
-'''
-'''
-@app.route('/hmuuid', methods=["PUT"])
-@secured(groups="HuBMAP-read")
-def update_hmuuid():
-    global worker
-    global logger
-    try:
-        if request.method == "PUT":
-            rjson = worker.uuidPut(request)
-            if isinstance(rjson, Response):
-                return rjson                
-            
-            return Response(rjson, 200, {'Content-Type': "application/json"})
-        else:
-            return Response("Invalid request.  Use PUT to update a UUID", 500)
-    except Exception as e:
-        eMsg = str(e)
-        logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
-'''
-
 @app.route('/hmuuid/<hmuuid>/exists', methods=["GET"])
 @secured(groups="HuBMAP-read")
 def is_hmuuid(hmuuid):
@@ -207,7 +184,19 @@ def is_hmuuid(hmuuid):
         logger.error(e, exc_info=True)
         return(Response("Unexpected error: " + eMsg, 500))
 
-
+@app.route('/file-id/<file_uuid>', methods=["GET"])
+@secured(groups="HuBMAP-read")
+def get_file_id(file_uuid):
+    global worker
+    global logger
+    try:
+        file_id_info = worker.getFileIdInfo(file_uuid)
+        if isinstance(file_id_info, Response): return file_id_info
+        return Response(response=file_id_info, mimetype="application/json")
+    except Exception as e:
+        eMsg = str(e)
+        logger.error(e, exc_info=True)
+        return(Response("Unexpected error: " + eMsg, 500))
     
 if __name__ == "__main__":
     try:
