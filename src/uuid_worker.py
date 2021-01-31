@@ -16,6 +16,8 @@ from hubmap_commons import globus_groups
 # Deprecate the use of Provenance
 #from hubmap_commons.provenance import Provenance
 
+BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
+
 HUBMAP_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION']
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE']
@@ -26,7 +28,7 @@ MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
 INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO hm_uuids (HM_UUID, HUBMAP_BASE_ID, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
 INSERT_ANCESTOR_SQL = "INSERT INTO hm_ancestors (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
-INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM, SIZE) VALUES (%s, %s, %s, %s)"
+INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM, SIZE, BASE_DIR) VALUES (%s, %s, %s, %s, %s)"
 #INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM) VALUES (%s, %s, %s)"
 #UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
@@ -196,16 +198,20 @@ class UUIDWorker:
             if not isinstance(file_info, list):
                 return(Response("file_info attribute must be a list", 400))
             if not len(file_info) == nIds:
-                return(Response("number file_info list must contain the same number of entries as ids being generated " + nIds))
+                return(Response("number file_info list must contain the same number of entries as ids being generated " + str(nIds)))
             for fi in file_info:
                 if not 'path' in fi or isBlank(fi['path']):
                     return(Response("The 'path' attribute is required for each file_info entry", 400))
-    
+                if not 'base_dir' in fi or isBlank(fi['base_dir']):
+                    return(Response("the 'base_dir' attribute is required for each file_info entity.  Valid values are " + " ".join(BASE_DIR_TYPES), 400))
+                base_dir = fi['base_dir'].strip().upper()
+                if not base_dir in BASE_DIR_TYPES:
+                    return(Response("valid base_dir values are " + " ".join(BASE_DIR_TYPES)))
         for parentId in ancestor_ids:
             if not self.uuid_exists(parentId):
                 return(Response("Parent id " + parentId + " does not exist", 400))
 
-        return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code = organ_code, lab_code = lab_code, file_info_array = file_info)
+        return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code = organ_code, lab_code = lab_code, file_info_array = file_info, base_dir_type = base_dir)
 
     '''
     def uuidPut(self, req):
@@ -306,7 +312,7 @@ class UUIDWorker:
         
     #generate multiple ids, one for each display id in the displayIds array
 
-    def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code = None, lab_code = None, file_info_array = None):
+    def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code = None, lab_code = None, file_info_array = None, base_dir_type = None):
         #if entityType == 'DONOR':
         gen_base_ids = entityType in HUBMAP_ID_ENTITY_TYPES
         returnIds = []
@@ -363,14 +369,15 @@ class UUIDWorker:
                         insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail)
                     
                     if store_file_info:
-                        file_path = file_info_array[i]['path']
+                        info_idx = i + n
+                        file_path = file_info_array[info_idx]['path']
                         file_checksum = None
                         file_size = None
-                        if 'checksum' in file_info_array[i]:
-                            file_checksum = file_info_array[i]['checksum']
-                        if 'size' in file_info_array[i]:
-                            file_size = file_info_array[i]['size']
-                        file_info_ins_row = (insUuid, file_path, file_checksum, file_size)    
+                        if 'checksum' in file_info_array[info_idx]:
+                            file_checksum = file_info_array[info_idx]['checksum']
+                        if 'size' in file_info_array[info_idx]:
+                            file_size = file_info_array[info_idx]['size']
+                        file_info_ins_row = (insUuid, file_path, file_checksum, file_size, base_dir_type)    
                         #file_info_ins_row = (insUuid, file_path, file_checksum)
                         file_info_insert_vals.append(file_info_ins_row)
                         thisId['file_path'] = file_path
@@ -553,7 +560,7 @@ class UUIDWorker:
         check_id = fid.strip()
         if isBlank(check_id) or len(check_id) != 32:
             return Response("Invalid file id format.  32 digit hex only.", 400)
-        sql = "select hm_uuid, path, checksum, size, ancestor_uuid from hm_files inner join hm_ancestors on hm_ancestors.descendant_uuid = hm_files.hm_uuid where hm_uuid = '" + check_id + "'"
+        sql = "select hm_uuid, path, checksum, size, base_dir, ancestor_uuid from hm_files inner join hm_ancestors on hm_ancestors.descendant_uuid = hm_files.hm_uuid where hm_uuid = '" + check_id + "'"
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(sql)

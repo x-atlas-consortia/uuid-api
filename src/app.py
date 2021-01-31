@@ -101,6 +101,9 @@ POST arguments in json
                      path- required: the path to the file in storage.  For the purposes of the
                                      UUID system this can be a full path or relative, but it is
                                      recommended that a relative path be used.
+                 base_dir- required: a specifier for the base directory where the file is stored
+                                     valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD
+                                        
                  checksum- optional: An MD5 checksum/hash of the file
                      size- optional: The size of the file as an integer
    
