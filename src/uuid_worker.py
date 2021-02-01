@@ -191,6 +191,7 @@ class UUIDWorker:
             ancestor_ids = parentIds
         
         file_info = None
+        base_dir = None
         if entityType == "FILE":
             if not 'file_info' in content:
                 return(Response("Entity type of FILE requires a file_info array provide in the request body.", 400))
