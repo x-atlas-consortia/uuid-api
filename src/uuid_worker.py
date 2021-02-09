@@ -372,6 +372,8 @@ class UUIDWorker:
                     if store_file_info:
                         info_idx = i + n
                         file_path = file_info_array[info_idx]['path']
+                        #replace any <uuid> tags in the file path with the generated uuid
+                        file_path = file_path.replace('<uuid>', insUuid)
                         file_checksum = None
                         file_size = None
                         if 'checksum' in file_info_array[info_idx]:

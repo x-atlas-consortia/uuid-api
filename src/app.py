@@ -101,6 +101,10 @@ POST arguments in json
                      path- required: the path to the file in storage.  For the purposes of the
                                      UUID system this can be a full path or relative, but it is
                                      recommended that a relative path be used.
+                                     The path attribute can contain an optional "<uuid>" tag, which
+                                     will be replaced by the generated file uuid before being stored.
+                                     This is useful in the case where the path to the file will include
+                                     the file uuid, such as for files uploaded via the ingest portal.
                  base_dir- required: a specifier for the base directory where the file is stored
                                      valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD
                                         
