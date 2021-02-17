@@ -67,7 +67,8 @@ class ReloadUUIDFromNeo4j:
         
     def load_lab_info(self):
         str_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        labs = self.graph.run(LABS_CYPHER).data()
+        labs_r = self.graph.run(LABS_CYPHER)
+        labs = labs_r.data()
         with closing(self.uuid_db.getDBConnection()) as db_conn:
             with closing(db_conn.cursor()) as curs:
                 count = 0
@@ -310,6 +311,39 @@ class ReloadUUIDFromNeo4j:
 
         return record
     
+    def fix_descendant_counts(self):
+        #set donor count per lab
+        donors = self.graph.run(DONORS_CYPHER).data()
+        lab_counts = {}
+        for donor in donors:
+            submission_id = donor['d.submission_id']
+            lab_id = donor['lab.uuid']
+            if not lab_id in lab_counts: lab_counts[lab_id] = 0
+            n = int(submission_id[len(submission_id)-4:])
+            if n > lab_counts[lab_id]: lab_counts[lab_id] = n
+        
+        samples = self.graph.run("match(sp:Sample)-[:ACTIVITY_INPUT]->(a)-[:ACTIVITY_OUTPUT]->(sc:Sample) return sp.uuid, sc.submission_id").data()
+        sample_counts = {}
+        for sample in samples:
+            submission_id = sample['sc.submission_id']
+            parent_id = sample['sp.uuid']
+            n = int(submission_id[submission_id.rfind('-')+1:])
+            if not parent_id in sample_counts: sample_counts[parent_id] = 0
+            if n > sample_counts[parent_id]: sample_counts[parent_id] = n
+            
+        with closing(self.uuid_db.getDBConnection()) as dbConn:
+            with closing(dbConn.cursor()) as curs:
+                for lab_uuid in lab_counts.keys():
+                    sql = f"update hm_uuids join hm_data_centers on hm_uuids.hm_uuid = hm_data_centers.hm_uuid set hm_uuids.descendant_count = {lab_counts[lab_uuid]} where hm_data_centers.dc_uuid = '{lab_uuid}';"
+                    curs.execute(sql)
+                for sample_uuid in sample_counts.keys():
+                    sql = f"update hm_uuids set descendant_count = {sample_counts[sample_uuid]} where hm_uuid = '{sample_uuid}'"
+                    curs.execute(sql)
+            dbConn.commit()
+                
+                    
+        
+                    
     
     def test(self, lab_id):
         if isBlank(lab_id):
@@ -353,8 +387,10 @@ try:
     reloader.load_activity_info()
     print("\nLoading collections.", end='')
     reloader.load_collection_info()
-    print("\nReplacing temp UUIDs")
+    print("\nReplacing temp UUIDs", end='')
     reloader.replace_temp_uuids()
+    print("\nFixing descendant counts")
+    reloader.fix_descendant_counts()
     #print(reloader.test('2cf25858-ed44-11e8-991d-0e368f3075e8Z'))
     
 except ErrorMessage as em:                                                                                                            
