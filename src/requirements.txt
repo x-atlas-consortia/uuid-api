@@ -1,9 +1,10 @@
 asn1crypto==0.24.0
+cachetools==4.1.0
 certifi==2019.9.11
 cffi==1.12.3
 chardet==3.0.4
 Click==7.0
-cryptography==2.7
+cryptography>=3.2
 Flask==1.1.1
 globus-sdk==1.8.0
 idna==2.8
