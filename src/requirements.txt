@@ -1,25 +1,9 @@
-asn1crypto==0.24.0
-cachetools==4.1.0
-certifi==2019.9.11
-cffi==1.12.3
-chardet==3.0.4
-Click==7.0
-cryptography>=3.2
-Flask==1.1.1
-globus-sdk==1.8.0
-idna==2.8
-itsdangerous==1.1.0
-Jinja2==2.10.1
-MarkupSafe==1.1.1
-mysql-connector-python==8.0.16
-property==2.2
-protobuf==3.9.2
-pycparser==2.19
-PyJWT==1.7.1
-requests==2.22.0
-six==1.12.0
-urllib3==1.25.6
-Werkzeug==0.16.0
+requests>=2.25.1
+Flask>=1.1.2
+mysql_connector_repackaged>=0.3.1
+py2neo>=2021.0.1
+secrets>=1.0.2
+
 # The branch name of commons to be used during image build
 # Default is master branch specified in docker-compose.yml if not set
 git+git://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
