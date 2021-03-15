@@ -50,8 +50,8 @@ function export_version() {
     echo "UUID_API_VERSION: $UUID_API_VERSION"
 }
 
-if [[ "$1" != "localhost" && "$1" != "dev" && "$1" != "test" && "$1" != "stage" && "$1" != "prod" ]]; then
-    echo "Unknown build environment '$1', specify one of the following: localhost|dev|test|stage|prod"
+if [[ "$1" != "localhost" && "$1" != "dev" && "$1" != "test" && "$1" != "stage" && "$1" != "prod" && "$1" != "refactor" ]]; then
+    echo "Unknown build environment '$1', specify one of the following: localhost|dev|test|stage|prod|refactor"
 else
     if [[ "$2" != "check" && "$2" != "config" && "$2" != "build" && "$2" != "start" && "$2" != "stop" && "$2" != "down" ]]; then
         echo "Unknown command '$2', specify one of the following: check|config|build|start|stop|down"
@@ -95,27 +95,21 @@ else
             # Copy over the source code to docker directory
             cp -r ../src uuid-api/
 
-            # Also load the sample MySQL database for localhost build
-            if [ "$1" = "localhost" ]; then
-                # Copy over the sql database
-                cp -r ../sql/uuids-dev.sql hubmap-mysql/uuids-dev.sql
-            fi
-
             # Only mount the VERSION file and BUILD file for localhost and dev
             # On test/stage/prod, copy the VERSION file and BUILD file to image
-            if [[ "$1" != "localhost" && "$1" != "dev" ]]; then
+            if [[ "$1" != "localhost" && "$1" != "dev" && "$1" != "refactor" ]]; then
                 # Delete old VERSION and BUILD files if found
-                if [ -f "uuid-api/src/VERSION" ]; then
-                    rm -rf uuid-api/src/VERSION
+                if [ -f "uuid-api/VERSION" ]; then
+                    rm -rf uuid-api/VERSION
                 fi
                 
-                if [ -f "uuid-api/src/BUILD" ]; then
-                    rm -rf uuid-api/src/BUILD
+                if [ -f "uuid-api/BUILD" ]; then
+                    rm -rf uuid-api/BUILD
                 fi
                 
-                # Copy over the one files
-                cp ../VERSION uuid-api/src
-                cp ../BUILD uuid-api/src
+                # Copy over the BUILD and VERSION files
+                cp ../VERSION uuid-api
+                cp ../BUILD uuid-api
             fi
 
             docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api build

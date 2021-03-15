@@ -14,4 +14,3 @@ services:
       - "../BUILD:/usr/src/app/BUILD"
       # Mount the source code to container
       - "../src:/usr/src/app/src"
-  
