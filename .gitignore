@@ -8,7 +8,9 @@ BUILD
 src/BUILD
 src/VERSION
 
-# Ignore copied over folders
+# Ignore docker copied files/folders
+docker/uuid-api/BUILD
+docker/uuid-api/VERSION
 docker/uuid-api/src
 docker/uuid-api/log
 docker/uuid-api/conf
