@@ -204,7 +204,21 @@ def get_file_id(file_uuid):
         eMsg = str(e)
         logger.error(e, exc_info=True)
         return(Response("Unexpected error: " + eMsg, 500))
-    
+
+@app.route('/<uuid>/ancestors')
+@secured(groups="HuBMAP-read")
+def get_ancestors(uuid):
+    global worker
+    global logger
+    try:
+        ancestors = worker.getAncestors(uuid)
+        if isinstance(ancestors, Response): return ancestors
+        return Response(response=ancestors, mimetype="application/json")
+    except Exception as e:
+        eMsg = str(e)
+        logger.error(e, exc_info=True)
+        return(Response("Unexpected error: " + eMsg, 500))
+
 if __name__ == "__main__":
     try:
         app.run(host='0.0.0.0', port="5001")
@@ -213,4 +227,5 @@ if __name__ == "__main__":
         print(str(e))
         logger.error(e, exc_info=True)
         print("Check the log file for further information: " + LOG_FILE_NAME)
+
 
