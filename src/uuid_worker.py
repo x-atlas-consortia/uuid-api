@@ -18,9 +18,9 @@ from hubmap_commons import globus_groups
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 
-HUBMAP_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION']
+HUBMAP_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'SUBMISSION']
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
-ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'SUBMISSION']
 
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 
@@ -178,7 +178,7 @@ class UUIDWorker:
                 if n_parents != 1:
                     return(Response("Entity type " + entityType + " requires a single ancestor id, " + str(n_parents) + " provided.", 400))
 
-        if entityType == "DONOR":
+        if entityType == "DONOR" or entityType == 'SUBMISSION':
             ancestor_ids = []
             lab_info = self.__resolve_lab_id(parentIds[0], userId, userEmail)
             if isinstance(lab_info, Response):
