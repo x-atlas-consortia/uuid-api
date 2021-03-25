@@ -18,9 +18,9 @@ from hubmap_commons import globus_groups
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 
-HUBMAP_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION']
+HUBMAP_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'SUBMISSION', 'REFERENCE']
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
-ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'SUBMISSION']
 
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 
@@ -178,7 +178,7 @@ class UUIDWorker:
                 if n_parents != 1:
                     return(Response("Entity type " + entityType + " requires a single ancestor id, " + str(n_parents) + " provided.", 400))
 
-        if entityType == "DONOR":
+        if entityType == "DONOR" or entityType == 'SUBMISSION':
             ancestor_ids = []
             lab_info = self.__resolve_lab_id(parentIds[0], userId, userEmail)
             if isinstance(lab_info, Response):
@@ -558,6 +558,35 @@ class UUIDWorker:
         
         rdict = self._convert_result_id_array(results, hmid)
         return json.dumps(rdict, indent=4, sort_keys=True, default=str)
+
+    def getAncestors(self, hmid):
+        if not isValidHMId(hmid):
+            return Response(hmid + " is not a valid uuid", 400)
+        tid = stripHMid(hmid).lower()
+        if startsWithComponentPrefix(hmid):
+            return Response(hmid + " not a valid uuid.")
+        elif len(tid) == 10:
+            return Response(hmid + " is not a valid uuid.")
+        elif len(tid) == 32:
+            sql = "select ancestor_uuid from hm_ancestors where descendant_uuid ='" + tid + "'"
+        else:
+            return Response("Invalid id (empty or bad length)", 400)
+
+        with closing(self.hmdb.getDBConnection()) as dbConn:
+            results = []
+            with closing(dbConn.cursor()) as curs:
+                curs.execute(sql)
+                for aid in curs.fetchall():
+                    results.append(aid[0])
+
+        # In Python, empty sequences (strings, lists, tuples) are false
+        if results is None or not results:
+            return Response ("Could not find the target id: " + hmid, 404)
+        if isinstance(results, list) and (len(results) == 0):
+            return Response ("Could not find the target id or target id has no ancestors: " + hmid, 404)
+        
+#        rdict = self._convert_result_id_array(results, hmid)
+        return json.dumps(results, indent=4, sort_keys=True, default=str)
     
     def getFileIdInfo(self, fid):
         check_id = fid.strip()
