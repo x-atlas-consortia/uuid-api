@@ -156,6 +156,10 @@ class UUIDWorker:
             return(Response("entity_type is a required attribute", 400))
         
         entityType = content['entity_type'].upper().strip()
+
+        if entityType not in HUBMAP_ID_ENTITY_TYPES:
+            return(Response(f"Invalid entity_type value: {entityType}. Must be one of the following: {','.join(HUBMAP_ID_ENTITY_TYPES)}", 400))
+
         organ_code = None
         if 'organ_code' in content and not isBlank(content['organ_code']):
             if not entityType == 'SAMPLE':
