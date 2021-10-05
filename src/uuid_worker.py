@@ -40,7 +40,7 @@ UUID_SELECTS = "HM_UUID as hm_uuid, HUBMAP_BASE_ID as hubmap_base_id, ENTITY_TYP
 
 def startsWithComponentPrefix(hmid):
     tidl = hmid.strip().lower()
-    if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt') or tidl.startswith('rtibd') or tidl.startswith('rtige') or tidl.startswith('rtinw') or tidl.startswith('rtist') or tidl.startswith('ttdct') or tidl.startswith('ttdhv') or tidl.startswith('ttdpd') or tidl.startswith('ttdst'):
+    if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith('stan') or tidl.startswith('ucsd') or tidl.startswith('calt') or tidl.startswith('rtibd') or tidl.startswith('rtige') or tidl.startswith('rtinw') or tidl.startswith('rtist') or tidl.startswith('ttdct') or tidl.startswith('ttdhv') or tidl.startswith('ttdpd') or tidl.startswith('ttdst') or tidl.startswith('chop') or tidl.startswith('hca') or tidl.startswith('pnnlnu') or tidl.startswith('psucu') or tidl.startswith('tmcpnnl') or tidl.startswith('ttdpnnl') or tidl.startswith('uconn') or tidl.startswith('ucsdcoh') or tidl.startswith('ucsdfr') or tidl.startswith('upenn') or tidl.startswith('yale'):
         return True
     else:
         return False
