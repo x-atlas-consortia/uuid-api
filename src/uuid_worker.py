@@ -199,7 +199,7 @@ class UUIDWorker:
             if not isinstance(file_info, list):
                 return(Response("file_info attribute must be a list", 400))
             if not len(file_info) == nIds:
-                return(Response("number file_info list must contain the same number of entries as ids being generated " + str(nIds)))
+                return(Response("number file_info list must contain the same number of entries as ids being generated " + str(nIds), 400))
             for fi in file_info:
                 if not 'path' in fi or isBlank(fi['path']):
                     return(Response("The 'path' attribute is required for each file_info entry", 400))
@@ -207,7 +207,7 @@ class UUIDWorker:
                     return(Response("the 'base_dir' attribute is required for each file_info entity.  Valid values are " + " ".join(BASE_DIR_TYPES), 400))
                 base_dir = fi['base_dir'].strip().upper()
                 if not base_dir in BASE_DIR_TYPES:
-                    return(Response("valid base_dir values are " + " ".join(BASE_DIR_TYPES)))
+                    return(Response("valid base_dir values are " + " ".join(BASE_DIR_TYPES), 400))
         for parentId in ancestor_ids:
             if not self.uuid_exists(parentId):
                 return(Response("Parent id " + parentId + " does not exist", 400))
@@ -299,7 +299,7 @@ class UUIDWorker:
                 
                 #error if remaining non-organ samples are not the descendants of a SAMPLE           
                 elif entity_type == 'SAMPLE' and not anc_entity_type == 'SAMPLE':
-                    return Response("Cannot create a submission id for a SAMPLE with a direct ancestor of " + anc_entity_type)
+                    return Response("Cannot create a submission id for a SAMPLE with a direct ancestor of " + anc_entity_type, 400)
                 elif entity_type == 'SAMPLE':
                     r_val = []
                     for _ in range(0, num_to_gen):
@@ -309,7 +309,7 @@ class UUIDWorker:
                     dbConn.commit()
                     return r_val
                 else:
-                    return Response("Cannot create a submission id for an entity of type " + entity_type)
+                    return Response("Cannot create a submission id for an entity of type " + entity_type, 400)
         
     #generate multiple ids, one for each display id in the displayIds array
 
@@ -564,9 +564,9 @@ class UUIDWorker:
             return Response(hmid + " is not a valid uuid", 400)
         tid = stripHMid(hmid).lower()
         if startsWithComponentPrefix(hmid):
-            return Response(hmid + " not a valid uuid.")
+            return Response(hmid + " not a valid uuid.", 400)
         elif len(tid) == 10:
-            return Response(hmid + " is not a valid uuid.")
+            return Response(hmid + " is not a valid uuid.", 400)
         elif len(tid) == 32:
             sql = "select ancestor_uuid from hm_ancestors where descendant_uuid ='" + tid + "'"
         else:
