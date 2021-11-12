@@ -284,7 +284,7 @@ class UUIDWorker:
                         if org_count >= 1:
                             return Response("Cannot add another organ of type " + organ_code + " to DONOR " + parent_id + " exists already.", 400)
                         if num_to_gen > 1:
-                            return Response("Cannot create multiple submission ids for organ of type " + organ_code + ". " + str(num_to_gen) + " requested.")
+                            return Response("Cannot create multiple submission ids for organ of type " + organ_code + ". " + str(num_to_gen) + " requested.", 400)
                         org_count = 1
                         r_val = [anc_submission_id + "-" + organ_code]                  
                     else:
