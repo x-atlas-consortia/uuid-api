@@ -33,7 +33,7 @@ components:
           description: Standard randomly generated 128 bit UUIDs represented as 32 hexadecimal digits
         hubmap_id:
           type: string
-          description: A randomly generated unique id that can be used to construct a HuBMAP DOI in the format #####.XXXX.###, e.g., HBM622.TTKZ.387
+          description: A randomly generated unique id that can be used to construct a HuBMAP DOI in the format ######.XXXX.###, e.g., HBM622.TTKZ.387
         submission_id:
           type: string
           description: The submission id (e.g., UFL0007). For Collection/Dataset/Activity/Upload, no submission_id gets generated
