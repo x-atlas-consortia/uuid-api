@@ -1,0 +1,214 @@
+openapi: 3.0.0
+info:
+  description: 'The UUID API is a restful web service used to create and query UUIDs used across HuBMAP.'
+  version: 2.0.6
+  title: HuBMAP UUID API
+  contact:
+    name: HuBMAP Help Desk
+    email: help@hubmapconsortium.org
+  license:
+    name: MIT License
+    url: 'https://github.com/hubmapconsortium/uuid-api/blob/master/license.txt'
+servers:
+  - url: 'https://uuid.api.hubmapconsortium.org'
+
+components:
+  schemas:
+    IdObject:
+      type: object
+      properties:
+        ancestor_id:
+          type: string
+          description: The uuid of the ancestor.
+        ancestor_ids:
+          type: array
+          description: The list of the ancestor uuids.
+          items: 
+            type: string
+        email:
+          type: string
+          description: The email of id creator.
+        hm_uuid:
+          type: string
+          description: Standard randomly generated 128 bit UUIDs represented as 32 hexadecimal digits
+        hubmap_id:
+          type: string
+          description: A randomly generated unique id that can be used to construct a HuBMAP DOI in the format #####.XXXX.###, e.g., HBM622.TTKZ.387
+        submission_id:
+          type: string
+          description: The submission id (e.g., UFL0007). For Collection/Dataset/Activity/Upload, no submission_id gets generated
+        time_generated:
+          type: string
+          description: The readable time when this id gets generated, e.g., 2021-09-01 21:32:39
+        type:
+          type: string
+          description: One of the supported types
+          enum: ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
+        user_id:
+          type: string
+          description: The user's globus id, e.g., 694c6f6a-1deb-41a6-880f-d1ad8af3705f
+
+paths:
+  '/hmuuid':
+    post:
+      summary: Generate new HuBMAP ids (uuid, hubmap_id)
+      parameters:
+        - in: query
+          name: entity_count
+          schema:
+            type: integer
+          description: The number of ids to generate, optional. If omitted, defaults to 1 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entity_type:
+                  type: string
+                  description: 'One of the supported types'
+                  enum: ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
+                parent_ids:
+                  type: array
+                  description: 'Required for entity types of SAMPLE, DONOR and DATASET
+                                an array of UUIDs for the ancestors of the new entity
+                                For SAMPLEs and DONORs a single uuid is required (one entry in the array)
+                                and multiple ids are not allowed (SAMPLEs and DONORs are required to 
+                                have a single ancestor, not multiple).  For DATASETs at least one ancestor
+                                UUID is required, but multiple can be specified. (A DATASET can be derived
+                                from multiple SAMPLEs or DATASETs.)'
+                  items:
+                    type: string
+                organ_code:
+                  type: string
+                  description: 'Required only in the case where an id is being generated for a SAMPLE that
+                                has a DONOR as a direct ancestor.  Must be one of the codes from:
+                                https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml'
+                file_info:
+                  description: 'Required only if the entity type is FILE. A list/array of information about each
+                                file that requires an id to be generated for it. The size of this array is required
+                                to match the optional URL argument,  entity_count (or be 1 in the case where this argument
+                                is defaulted to 1). Each file info element should contain:
+                                   path- required: the path to the file in storage.  For the purposes of the
+                                                   UUID system this can be a full path or relative, but it is
+                                                   recommended that a relative path be used.
+                                                   The path attribute can contain an optional "<uuid>" tag, which
+                                                   will be replaced by the generated file uuid before being stored.
+                                                   This is useful in the case where the path to the file will include
+                                                   the file uuid, such as for files uploaded via the ingest portal.
+                                base_dir- required: a specifier for the base directory where the file is stored
+                                                   valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD
+                                                      
+                                checksum- optional: An MD5 checksum/hash of the file
+                                   size- optional: The size of the file as an integer'
+      responses:
+        '200':
+          description: The generated HuBMAP ids
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/IdObject'
+        '400':
+          description: Invalid or misformatted request body was provided.
+        '401':
+          description: The user's bearer token has expired or the user did not supply a valid token.
+        '500':
+          description: An unexpected error occurred
+    
+  '/hmuuid/{id}':
+    get:
+      summary: Get the HuBMAP ids information for a given HuBMAP ID (e.g. HBM123.ABCD.456) or UUID
+      parameters:
+        - name: id
+          in: path
+          description: Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A json containing all the ids information is returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdObject'
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '403':
+          description: THe user is not authorized to use this method
+        '404':
+          description: The target id could not be found
+        '500':
+          description: An unexpected error occurred
+
+  '/hmuuid/{id}/exists':
+    get:
+      summary: Check the existence of the given id
+      parameters:
+        - name: id
+          in: path
+          description: Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Returns text string 'true' if the given id exists, otherwise 'false'
+        '400':
+          description: Invalid or misformatted id
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '404':
+          description: The target id could not be found
+        '500':
+          description: An unexpected error occurred
+
+  '/file-id/{uuid}':
+    get:
+      summary: Get the file ids based on the given file uuid
+      parameters:
+        - name: uuid
+          in: path
+          description: The uuid of the file
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The ids information detail of the target file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdObject'
+        '400':
+          description: Invalid or misformatted uuid
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '404':
+          description: The target file uuid could not be found
+        '500':
+          description: An unexpected error occurred
+
+  '/{uuid}/ancestors':
+    get:
+      summary: Get all the ancestor uuids of the given uuid
+      parameters:
+        - name: uuid
+          in: path
+          description: The target uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A json array of ancestor uuids
+        '400':
+          description: Invalid or misformatted uuid
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '404':
+          description: The target uuid could not be found
+        '500':
+          description: An unexpected error occurred
+  
