@@ -89,4 +89,4 @@ You can also stop the running container and remove it by:
 
 ### Updating API Documentation
 
-The documentation for the API calls is hosted on SmartAPI.  Modifying the `entity-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents.  The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
+The documentation for the API calls is hosted on SmartAPI. Modifying the `uuid-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents. The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
