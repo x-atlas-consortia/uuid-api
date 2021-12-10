@@ -15,7 +15,7 @@ services:
     hostname: uuid-api
     container_name: uuid-api
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:2222"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8080"]
       interval: 1m30s
       timeout: 10s
       retries: 3
