@@ -15,5 +15,5 @@ services:
     restart: always
     volumes:
       # Mount conf.d on host machine to the nginx conf.d on container
-      - "./entity-api/nginx/conf.d:/etc/nginx/conf.d"
+      - "./uuid-api/nginx/conf.d:/etc/nginx/conf.d"
 
