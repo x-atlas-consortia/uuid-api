@@ -15,7 +15,7 @@ services:
     hostname: uuid-api
     container_name: uuid-api
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://hubmap-auth:9999"]
+      test: ["CMD", "curl", "--fail", "http://localhost:2222"]
       interval: 1m30s
       timeout: 10s
       retries: 3
