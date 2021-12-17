@@ -27,7 +27,8 @@ if app.config['API_TYPE'] == 'HUBMAP':
 
 elif app.config['API_TYPE'] == 'SENNET':
     app_uuid = 'snuuid'
-    group_name = 'SenNet'
+    # TODO: need to add new group name to auth library
+    group_name = 'HuBMAP'
 
 
 @app.before_first_request
