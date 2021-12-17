@@ -99,10 +99,8 @@ def isValidAppId(app_id):
 def stripAppId(appId):
     if isBlank(appId): return appId
     thmid = appId.strip();
-    if thmid.lower().startswith('hbm'):
+    if thmid.lower().startswith(app_id.lower()):
         thmid = thmid[3:]
-    elif thmid.low().startswith('snt'):
-        thmid = thmid[2:]
     if thmid.startswith(':'): thmid = thmid[1:]
     return thmid.strip().replace('-', '').replace('.', '').replace(' ', '')
 
@@ -221,7 +219,7 @@ class UUIDWorker:
                     return (Response("Entity type " + entityType + " requires a single ancestor id, " + str(
                         n_parents) + " provided.", 400))
 
-        if entityType == "ORGANIZM" or entityType == 'UPLOAD':
+        if entityType == "DONOR" or entityType == "SOURCE" or entityType == 'UPLOAD':
             ancestor_ids = []
             lab_info = self.__resolve_lab_id(parentIds[0], userId, userEmail)
             if isinstance(lab_info, Response):
@@ -299,42 +297,60 @@ class UUIDWorker:
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(
-                    "select entity_type, descendant_count, submission_id from hm_uuids where hm_uuid = '" + parent_id + "'")
+                    "select entity_type, descendant_count, submission_id from " + uuid_table + " where " + uuid_key + " = '" + parent_id + "'")
                 results = curs.fetchone()
                 anc_entity_type = results[0]
                 desc_count = results[1]
                 anc_submission_id = results[2]
-                # an organizm
-                if entity_type == 'ORGANIZM':
+                # a donor
+                if entity_type == 'DONOR':
                     if not anc_entity_type == 'LAB':
                         return Response(
-                            "An id can't be created for a ORGANIZM because a DATA CENTER is required as the direct ancestor and an ancestor of type " + anc_entity_type + " found.",
+                            "An id can't be created for a DONOR because a DATA CENTER is required as the direct ancestor and an ancestor of type " + anc_entity_type + " found.",
                             400)
                     if isBlank(lab_code):
                         return Response(
-                            "No data center code found data center with uuid:" + parent_id + ". Unable to generate an id for a ORGANIZM.",
+                            "No data center code found data center with uuid:" + parent_id + ". Unable to generate an id for a DONOR.",
                             400)
                     r_val = []
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
-                    curs.execute("update hm_uuids set descendant_count = " + str(
-                        desc_count) + " where hm_uuid = '" + parent_id + "'")
+                    curs.execute("update " + uuid_table + " set descendant_count = " + str(
+                        desc_count) + " where " + uuid_key + " = '" + parent_id + "'")
+                    dbConn.commit()
+                    return r_val
+                # a source
+                if entity_type == 'SOURCE':
+                    if not anc_entity_type == 'LAB':
+                        return Response(
+                            "An id can't be created for a SOURCE because a DATA CENTER is required as the direct ancestor and an ancestor of type " + anc_entity_type + " found.",
+                            400)
+                    if isBlank(lab_code):
+                        return Response(
+                            "No data center code found data center with uuid:" + parent_id + ". Unable to generate an id for a DONOR.",
+                            400)
+                    r_val = []
+                    for _ in range(0, num_to_gen):
+                        desc_count = desc_count + 1
+                        r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
+                    curs.execute("update " + uuid_table + " set descendant_count = " + str(
+                        desc_count) + " where " + uuid_key + " = '" + parent_id + "'")
                     dbConn.commit()
                     return r_val
                 # an organ
-                elif entity_type == 'SAMPLE' and anc_entity_type == 'ORGANIZM':
+                elif entity_type == 'SAMPLE' and (anc_entity_type == 'DONOR' or anc_entity_type == 'SOURCE'):
                     if isBlank(organ_code):
                         return Response(
-                            "An id can't be created for a SAMPLE because the immediate ancestor is a ORGANIZM and the SAMPLE was not supplied with an associated organ code (SAMPLE must be an organ to have a ORGANIZM as a direct ancestor)",
+                            "An id can't be created for a SAMPLE because the immediate ancestor is a DONOR and the SAMPLE was not supplied with an associated organ code (SAMPLE must be an organ to have a DONOR as a direct ancestor)",
                             400)
                     organ_code = organ_code.strip().upper()
                     curs.execute(
-                        "select organ_count from hm_organs where organizm_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+                        "select organ_count from hm_organs where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
                     org_res = curs.fetchone()
                     if org_res is None:
                         curs.execute(
-                            "insert into hm_organs (ORGANIZM_UUID, ORGAN_CODE, ORGAN_COUNT) VALUE ('" + parent_id + "', '" + organ_code + "', 0)")
+                            "insert into hm_organs (DONOR_UUID, ORGAN_CODE, ORGAN_COUNT) VALUE ('" + parent_id + "', '" + organ_code + "', 0)")
                         dbConn.commit()
                         org_count = 0
                     else:
@@ -342,7 +358,7 @@ class UUIDWorker:
                     if not organ_code in MULTIPLE_ALLOWED_ORGANS:
                         if org_count >= 1:
                             return Response(
-                                "Cannot add another organ of type " + organ_code + " to ORGANIZM " + parent_id + " exists already.",
+                                "Cannot add another organ of type " + organ_code + " to DONOR " + parent_id + " exists already.",
                                 400)
                         if num_to_gen > 1:
                             return Response(
@@ -357,7 +373,7 @@ class UUIDWorker:
                             r_val.append(anc_submission_id + "-" + organ_code + padLeadingZeros(org_count, 2))
 
                     curs.execute("update hm_organs set organ_count = " + str(
-                        org_count) + " where organizm_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+                        org_count) + " where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
                     dbConn.commit()
                     return r_val
 
@@ -370,8 +386,8 @@ class UUIDWorker:
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(anc_submission_id + "-" + str(desc_count))
-                    curs.execute("update hm_uuids set descendant_count = " + str(
-                        desc_count) + " where hm_uuid = '" + parent_id + "'")
+                    curs.execute("update " + uuid_table + " set descendant_count = " + str(
+                        desc_count) + " where " + uuid_key + " = '" + parent_id + "'")
                     dbConn.commit()
                     return r_val
                 else:
@@ -381,7 +397,7 @@ class UUIDWorker:
 
     def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code=None, lab_code=None,
                  file_info_array=None, base_dir_type=None):
-        # if entityType == 'ORGANIZM':
+        # if entityType == 'DONOR':
         gen_base_ids = entityType in ID_ENTITY_TYPES
         returnIds = []
         now = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -391,7 +407,7 @@ class UUIDWorker:
         with self.lock:
             # generate in batches
             previousUUIDs = set()
-            previous_hubmap_ids = set()
+            previous_app_ids = set()
 
             gen_submission_ids = False
             if entityType in SUBMISSION_ID_ENTITY_TYPES:
@@ -405,10 +421,10 @@ class UUIDWorker:
                 # generate uuids
                 uuids = self.__nUniqueIds(numToGen, self.uuidGen, uuid_key, previousGeneratedIds=previousUUIDs)
                 if gen_base_ids:
-                    hubmap_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, "HUBMAP_BASE_ID",
-                                                        previousGeneratedIds=previous_hubmap_ids)
+                    app_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, base_id,
+                                                        previousGeneratedIds=previous_app_ids)
                 else:
-                    hubmap_base_ids = [None] * numToGen
+                    app_base_ids = [None] * numToGen
 
                 count_increase_q = None
                 submission_ids = None
@@ -424,19 +440,19 @@ class UUIDWorker:
                     thisId = {"uuid": insUuid}
 
                     if gen_base_ids:
-                        ins_hubmap_base_id = hubmap_base_ids[n]
-                        previous_hubmap_ids.add(ins_hubmap_base_id)
-                        ins_display_hubmap_id = self.__display_hm_id(ins_hubmap_base_id)
-                        thisId["hubmap_base_id"] = ins_hubmap_base_id
-                        thisId["hubmap_id"] = ins_display_hubmap_id
+                        ins_app_base_id = app_base_ids[n]
+                        previous_app_ids.add(ins_app_base_id)
+                        ins_display_app_id = self.__display_app_id(ins_app_base_id)
+                        thisId[base_id] = ins_app_base_id
+                        thisId["app_id"] = ins_display_app_id
                     else:
-                        ins_hubmap_base_id = None
+                        ins_app_base_id = None
 
                     if gen_submission_ids:
                         thisId["submission_id"] = submission_ids[n]
-                        insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail, submission_ids[n])
+                        insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail, submission_ids[n])
                     else:
-                        insRow = (insUuid, ins_hubmap_base_id, entityType, now, userId, userEmail)
+                        insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail)
 
                     if store_file_info:
                         info_idx = i + n
@@ -538,9 +554,9 @@ class UUIDWorker:
 
         return excluded
 
-    def __display_hm_id(self, hm_base_id):
-        hubmap_id = 'HBM' + hm_base_id[0:3] + '.' + hm_base_id[3:7] + '.' + hm_base_id[7:]
-        return hubmap_id
+    def __display_app_id(self, base_id):
+        new_id = app_id + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
+        return new_id
 
     def hmidGen(self):
         nums1 = ''
@@ -558,7 +574,7 @@ class UUIDWorker:
 
     def getIdExists(self, hmid):
         if not isValidAppId(hmid):
-            return Response("Invalid HuBMAP Id", 400)
+            return Response("Invalid " + API_TYPE + " Id", 400)
         tid = stripAppId(hmid)
         if startsWithComponentPrefix(hmid):
             return self.submission_id_exists(hmid.strip())
@@ -567,7 +583,7 @@ class UUIDWorker:
         elif len(tid) == 32:
             return self.uuid_exists(tid.lower())
         else:
-            return Response("Invalid HuBMAP Id (or empty or bad length)", 400)
+            return Response("Invalid " + API_TYPE + " Id (or empty or bad length)", 400)
 
     # convert csv list of ancestor ids to a list
     # convert hubmap base id to a hubmap id (display version)
@@ -590,10 +606,10 @@ class UUIDWorker:
                 else:
                     raise Exception("Unknown ancestor type for id:" + hmid)
 
-                if 'hubmap_base_id' in record:
-                    if not record['hubmap_base_id'].strip() == '':
-                        record['hubmap_id'] = self.__display_hm_id(record['hubmap_base_id'])
-                    record.pop('hubmap_base_id', '')
+                if base_id in record:
+                    if not record[base_id].strip() == '':
+                        record['app_id'] = self.__display_app_id(record[base_id])
+                    record.pop(base_id, '')
             else:
                 raise Exception("Multiple results exist for id:" + hmid)
 
@@ -732,7 +748,7 @@ class UUIDWorker:
     def submission_id_exists(self, hmid):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from hm_uuids where submission_id = '" + hmid + "'")
+                curs.execute("select count(*) from " + uuid_table + " where submission_id = '" + hmid + "'")
                 res = curs.fetchone()
         if (res is None or len(res) == 0): return False
         if (res[0] == 1): return True
