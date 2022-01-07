@@ -42,6 +42,9 @@ elif API_TYPE == 'SENNET':
     files_table = 'sn_files'
     data_center = 'sn_data_centers'
     app_id = 'SNT'
+else:
+    raise ValueError(
+        "Required configuration parameter API_TYPE not found in application configuration. Must be set to 'HUBMAP' or 'SENNET'.")
 
 MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO " + uuid_table + " (" + uuid_key + ", " + base_id + ", ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
