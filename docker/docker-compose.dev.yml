@@ -19,4 +19,6 @@ services:
       - "../BUILD:/usr/src/app/BUILD"
       # Mount the source code to container
       - "../src:/usr/src/app/src"
+      # Mount conf.d on host machine to the nginx conf.d on container
+      - "./uuid-api/nginx/conf.d:/etc/nginx/conf.d"
   
