@@ -11,7 +11,7 @@ info:
     url: "https://github.com/hubmapconsortium/uuid-api/blob/master/license.txt"
   version: "2.0.7"
 servers:
-- url: "https://uuid-api.dev.hubmapconsortium.org"
+- url: "https://uuid.api.hubmapconsortium.org"
 paths:
   /status:
     get:
@@ -840,8 +840,7 @@ x-amazon-apigateway-gateway-responses:
   RESOURCE_NOT_FOUND:
     statusCode: 404
     responseTemplates:
-      application/json: "{\"message\":$context.error.messageString,\n\"http_method\"\
-        : \"$context.httpMethod\"}"
+      application/json: "{\"message\":$context.error.messageString}"
   UNAUTHORIZED:
     statusCode: 401
     responseTemplates:
