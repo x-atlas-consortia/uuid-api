@@ -1,0 +1,870 @@
+openapi: "3.0.1"
+info:
+  title: "HuBMAP UUID API"
+  description: "The UUID API is a restful web service used to create and query UUIDs\
+    \ used across HuBMAP."
+  contact:
+    name: "HuBMAP Help Desk"
+    email: "help@hubmapconsortium.org"
+  license:
+    name: "MIT License"
+    url: "https://github.com/hubmapconsortium/uuid-api/blob/master/license.txt"
+  version: "2.0.7"
+servers:
+- url: "https://uuid-api.dev.hubmapconsortium.org"
+paths:
+  /status:
+    get:
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "GET"
+        uri: "http://${stageVariables.VPCNLB}/status"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    options:
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "OPTIONS"
+        uri: "http://${stageVariables.VPCNLB}/status"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+  /{uuid}:
+    x-amazon-apigateway-any-method:
+      parameters:
+      - name: "uuid"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:450834107946:function:HuBMAP-API-Gateway-404/invocations"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        contentHandling: "CONVERT_TO_TEXT"
+  /{uuid}/ancestors:
+    get:
+      summary: "Get all the ancestor uuids of the given uuid"
+      parameters:
+      - name: "uuid"
+        in: "path"
+        description: "The target uuid"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "GET"
+        uri: "http://${stageVariables.VPCNLB}/{uuid}/ancestors"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.uuid: "method.request.path.uuid"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    options:
+      parameters:
+      - name: "uuid"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "OPTIONS"
+        uri: "http://${stageVariables.VPCNLB}/{uuid}/ancestors"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.uuid: "method.request.path.uuid"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+  /{uuid}/{proxy+}:
+    x-amazon-apigateway-any-method:
+      parameters:
+      - name: "proxy"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      - name: "uuid"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:450834107946:function:HuBMAP-API-Gateway-404/invocations"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        cacheNamespace: "6phl87"
+        cacheKeyParameters:
+        - "method.request.path.proxy"
+        contentHandling: "CONVERT_TO_TEXT"
+  /file-id/{uuid}:
+    get:
+      summary: "Get the file ids based on the given file uuid"
+      parameters:
+      - name: "uuid"
+        in: "path"
+        description: "The uuid of the file"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        "404":
+          description: "The target file uuid could not be found"
+          content: {}
+        "200":
+          description: "The ids information detail of the target file"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdObject"
+        "400":
+          description: "Invalid or misformatted uuid"
+          content: {}
+        "401":
+          description: "The user's token has expired or the user did not supply a\
+            \ valid token"
+          content: {}
+        "500":
+          description: "An unexpected error occurred"
+          content: {}
+      security:
+      - HuBMAP-API-Gateway-Read-Group-Authorizer: []
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "GET"
+        uri: "http://${stageVariables.VPCNLB}/file-id"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        requestParameters:
+          integration.request.path.uuid: "method.request.path.uuid"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    options:
+      parameters:
+      - name: "uuid"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "OPTIONS"
+        uri: "http://${stageVariables.VPCNLB}/file-id/{uuid}"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.uuid: "method.request.path.uuid"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+  /hmuuid/{id}:
+    get:
+      summary: "Get the HuBMAP ids information for a given HuBMAP ID (e.g. HBM123.ABCD.456)\
+        \ or UUID"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        "404":
+          description: "The target id could not be found"
+          content: {}
+        "200":
+          description: "A json containing all the ids information is returned"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdObject"
+        "401":
+          description: "The user's token has expired or the user did not supply a\
+            \ valid token"
+          content: {}
+        "500":
+          description: "An unexpected error occurred"
+          content: {}
+        "403":
+          description: "THe user is not authorized to use this method"
+          content: {}
+      security:
+      - HuBMAP-API-Gateway-Read-Group-Authorizer: []
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "GET"
+        uri: "http://${stageVariables.VPCNLB}/hmuuid/{id}"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        requestParameters:
+          integration.request.path.id: "method.request.path.id"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    options:
+      parameters:
+      - name: "id"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "OPTIONS"
+        uri: "http://${stageVariables.VPCNLB}/hmuuid/{id}"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.id: "method.request.path.id"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+  /hmuuid/{id}/exists:
+    get:
+      summary: "Check the existence of the given id"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        "404":
+          description: "The target id could not be found"
+          content: {}
+        "200":
+          description: "Returns text string 'true' if the given id exists, otherwise\
+            \ 'false'"
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: "string"
+          content: {}
+        "400":
+          description: "Invalid or misformatted id"
+          content: {}
+        "401":
+          description: "The user's token has expired or the user did not supply a\
+            \ valid token"
+          content: {}
+        "500":
+          description: "An unexpected error occurred"
+          content: {}
+      security:
+      - HuBMAP-API-Gateway-Read-Group-Authorizer: []
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "GET"
+        uri: "http://${stageVariables.VPCNLB}/hmuuid/{id}/exists"
+        responses:
+          default:
+            statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        requestParameters:
+          integration.request.path.id: "method.request.path.id"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    options:
+      parameters:
+      - name: "id"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "OPTIONS"
+        uri: "http://${stageVariables.VPCNLB}/hmuuid/{id}/exists"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.id: "method.request.path.id"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+  /hmuuid:
+    post:
+      summary: "Generate new HuBMAP ids (uuid, hubmap_id)"
+      parameters:
+      - name: "entity_count"
+        in: "query"
+        description: "The number of ids to generate, optional. If omitted, defaults\
+          \ to 1"
+        schema:
+          type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MODEL8dd1a8"
+        required: true
+      responses:
+        "200":
+          description: "The generated HuBMAP ids"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdObject"
+        "400":
+          description: "Invalid or misformatted request body was provided."
+          content: {}
+        "401":
+          description: "The user's bearer token has expired or the user did not supply\
+            \ a valid token."
+          content: {}
+        "500":
+          description: "An unexpected error occurred"
+          content: {}
+      security:
+      - HuBMAP-API-Gateway-Read-Group-Authorizer: []
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "POST"
+        uri: "http://${stageVariables.VPCNLB}/hmuuid"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+  /:
+    get:
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "GET"
+        uri: "http://${stageVariables.VPCNLB}/"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    options:
+      x-amazon-apigateway-integration:
+        type: "http_proxy"
+        connectionId: "${stageVariables.VPCLINK}"
+        httpMethod: "OPTIONS"
+        uri: "http://${stageVariables.VPCNLB}/"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        connectionType: "VPC_LINK"
+    x-amazon-apigateway-any-method:
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:450834107946:function:HuBMAP-API-Gateway-404/invocations"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        contentHandling: "CONVERT_TO_TEXT"
+components:
+  schemas:
+    IdObject:
+      type: "object"
+      properties:
+        ancestor_id:
+          type: "string"
+          description: "The uuid of the ancestor."
+        ancestor_ids:
+          type: "array"
+          description: "The list of the ancestor uuids."
+          items:
+            type: "string"
+        email:
+          type: "string"
+          description: "The email of id creator."
+        hm_uuid:
+          type: "string"
+          description: "Standard randomly generated 128 bit UUIDs represented as 32\
+            \ hexadecimal digits"
+        hubmap_id:
+          type: "string"
+          description: "A randomly generated unique id that can be used to construct\
+            \ a HuBMAP DOI in the format"
+        submission_id:
+          type: "string"
+          description: "The submission id (e.g., UFL0007). For Collection/Dataset/Activity/Upload,\
+            \ no submission_id gets generated"
+        time_generated:
+          type: "string"
+          description: "The readable time when this id gets generated, e.g., 2021-09-01\
+            \ 21:32:39"
+        type:
+          type: "string"
+          description: "One of the supported types"
+          enum:
+          - "ACTIVITY"
+          - "SAMPLE"
+          - "DONOR"
+          - "DATASET"
+          - "COLLECTION"
+          - "UPLOAD"
+          - "REFERENCE"
+          - "AVR"
+        user_id:
+          type: "string"
+          description: "The user's globus id, e.g., 694c6f6a-1deb-41a6-880f-d1ad8af3705f"
+    MODEL8dd1a8:
+      type: "object"
+      properties:
+        entity_type:
+          type: "string"
+          description: "One of the supported types"
+          enum:
+          - "ACTIVITY"
+          - "SAMPLE"
+          - "DONOR"
+          - "DATASET"
+          - "COLLECTION"
+          - "UPLOAD"
+          - "REFERENCE"
+          - "AVR"
+        parent_ids:
+          type: "array"
+          description: "Required for entity types of SAMPLE, DONOR and DATASET an\
+            \ array of UUIDs for the ancestors of the new entity For SAMPLEs and DONORs\
+            \ a single uuid is required (one entry in the array) and multiple ids\
+            \ are not allowed (SAMPLEs and DONORs are required to have a single ancestor,\
+            \ not multiple).  For DATASETs at least one ancestor UUID is required,\
+            \ but multiple can be specified. (A DATASET can be derived from multiple\
+            \ SAMPLEs or DATASETs.)"
+          items:
+            type: "string"
+        organ_code:
+          type: "string"
+          description: "Required only in the case where an id is being generated for\
+            \ a SAMPLE that has a DONOR as a direct ancestor.  Must be one of the\
+            \ codes from: https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml"
+        file_info:
+          type: "object"
+          description: "Required only if the entity type is FILE. A list/array of\
+            \ information about each file that requires an id to be generated for\
+            \ it. The size of this array is required to match the optional URL argument,\
+            \  entity_count (or be 1 in the case where this argument is defaulted\
+            \ to 1). Each file info element should contain: path- required: the path\
+            \ to the file in storage.  For the purposes of the UUID system this can\
+            \ be a full path or relative, but it is recommended that a relative path\
+            \ be used. The path attribute can contain an optional \"<uuid>\" tag,\
+            \ which will be replaced by the generated file uuid before being stored.\
+            \ This is useful in the case where the path to the file will include the\
+            \ file uuid, such as for files uploaded via the ingest portal. base_dir-\
+            \ required: a specifier for the base directory where the file is stored\
+            \ valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD\nchecksum- optional:\
+            \ An MD5 checksum/hash of the file size- optional: The size of the file\
+            \ as an integer"
+  securitySchemes:
+    HuBMAP-API-Gateway-Read-Group-Authorizer:
+      type: "apiKey"
+      name: "Authorization"
+      in: "header"
+      x-amazon-apigateway-authtype: "custom"
+      x-amazon-apigateway-authorizer:
+        type: "token"
+        authorizerUri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:450834107946:function:HuBMAP-API-Gateway-Read-Group-Authorizer/invocations"
+        authorizerResultTtlInSeconds: 0
+x-amazon-apigateway-documentation:
+  version: "2.0.6"
+  createdDate: "2022-01-10T17:48:20Z"
+  documentationParts:
+  - location:
+      type: "API"
+    properties:
+      info:
+        description: "The UUID API is a restful web service used to create and query\
+          \ UUIDs used across HuBMAP."
+        contact:
+          name: "HuBMAP Help Desk"
+          email: "help@hubmapconsortium.org"
+        license:
+          name: "MIT License"
+          url: "https://github.com/hubmapconsortium/uuid-api/blob/master/license.txt"
+  - location:
+      type: "METHOD"
+      path: "/file-id/{uuid}"
+      method: "GET"
+    properties:
+      summary: "Get the file ids based on the given file uuid"
+  - location:
+      type: "METHOD"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+    properties:
+      summary: "Check the existence of the given id"
+  - location:
+      type: "METHOD"
+      path: "/hmuuid/{id}"
+      method: "GET"
+    properties:
+      summary: "Get the HuBMAP ids information for a given HuBMAP ID (e.g. HBM123.ABCD.456)\
+        \ or UUID"
+  - location:
+      type: "METHOD"
+      path: "/hmuuid"
+      method: "POST"
+    properties:
+      summary: "Generate new HuBMAP ids (uuid, hubmap_id)"
+  - location:
+      type: "METHOD"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+    properties:
+      summary: "Get all the ancestor uuids of the given uuid"
+  - location:
+      type: "MODEL"
+      name: "IdObject.ancestor_id"
+    properties:
+      description: "The uuid of the ancestor."
+  - location:
+      type: "MODEL"
+      name: "IdObject.ancestor_ids"
+    properties:
+      description: "The list of the ancestor uuids."
+  - location:
+      type: "MODEL"
+      name: "IdObject.email"
+    properties:
+      description: "The email of id creator."
+  - location:
+      type: "MODEL"
+      name: "IdObject.hm_uuid"
+    properties:
+      description: "Standard randomly generated 128 bit UUIDs represented as 32 hexadecimal\
+        \ digits"
+  - location:
+      type: "MODEL"
+      name: "IdObject.hubmap_id"
+    properties:
+      description: "A randomly generated unique id that can be used to construct a\
+        \ HuBMAP DOI in the format"
+  - location:
+      type: "MODEL"
+      name: "IdObject.submission_id"
+    properties:
+      description: "The submission id (e.g., UFL0007). For Collection/Dataset/Activity/Upload,\
+        \ no submission_id gets generated"
+  - location:
+      type: "MODEL"
+      name: "IdObject.time_generated"
+    properties:
+      description: "The readable time when this id gets generated, e.g., 2021-09-01\
+        \ 21:32:39"
+  - location:
+      type: "MODEL"
+      name: "IdObject.type"
+    properties:
+      description: "One of the supported types"
+  - location:
+      type: "MODEL"
+      name: "IdObject.user_id"
+    properties:
+      description: "The user's globus id, e.g., 694c6f6a-1deb-41a6-880f-d1ad8af3705f"
+  - location:
+      type: "MODEL"
+      name: "MODEL8dd1a8.entity_type"
+    properties:
+      description: "One of the supported types"
+  - location:
+      type: "MODEL"
+      name: "MODEL8dd1a8.file_info"
+    properties:
+      description: "Required only if the entity type is FILE. A list/array of information\
+        \ about each file that requires an id to be generated for it. The size of\
+        \ this array is required to match the optional URL argument,  entity_count\
+        \ (or be 1 in the case where this argument is defaulted to 1). Each file info\
+        \ element should contain: path- required: the path to the file in storage.\
+        \  For the purposes of the UUID system this can be a full path or relative,\
+        \ but it is recommended that a relative path be used. The path attribute can\
+        \ contain an optional \"<uuid>\" tag, which will be replaced by the generated\
+        \ file uuid before being stored. This is useful in the case where the path\
+        \ to the file will include the file uuid, such as for files uploaded via the\
+        \ ingest portal. base_dir- required: a specifier for the base directory where\
+        \ the file is stored valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD\n\
+        checksum- optional: An MD5 checksum/hash of the file size- optional: The size\
+        \ of the file as an integer"
+  - location:
+      type: "MODEL"
+      name: "MODEL8dd1a8.organ_code"
+    properties:
+      description: "Required only in the case where an id is being generated for a\
+        \ SAMPLE that has a DONOR as a direct ancestor.  Must be one of the codes\
+        \ from: https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml"
+  - location:
+      type: "MODEL"
+      name: "MODEL8dd1a8.parent_ids"
+    properties:
+      description: "Required for entity types of SAMPLE, DONOR and DATASET an array\
+        \ of UUIDs for the ancestors of the new entity For SAMPLEs and DONORs a single\
+        \ uuid is required (one entry in the array) and multiple ids are not allowed\
+        \ (SAMPLEs and DONORs are required to have a single ancestor, not multiple).\
+        \  For DATASETs at least one ancestor UUID is required, but multiple can be\
+        \ specified. (A DATASET can be derived from multiple SAMPLEs or DATASETs.)"
+  - location:
+      type: "PATH_PARAMETER"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+      name: "id"
+    properties:
+      description: "Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID"
+  - location:
+      type: "PATH_PARAMETER"
+      path: "/hmuuid/{id}"
+      method: "GET"
+      name: "id"
+    properties:
+      description: "Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID"
+  - location:
+      type: "PATH_PARAMETER"
+      path: "/file-id/{uuid}"
+      method: "GET"
+      name: "uuid"
+    properties:
+      description: "The uuid of the file"
+  - location:
+      type: "PATH_PARAMETER"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+      name: "uuid"
+    properties:
+      description: "The target uuid"
+  - location:
+      type: "QUERY_PARAMETER"
+      path: "/hmuuid"
+      method: "POST"
+      name: "entity_count"
+    properties:
+      description: "The number of ids to generate, optional. If omitted, defaults\
+        \ to 1"
+  - location:
+      type: "RESPONSE"
+      path: "/file-id/{uuid}"
+      method: "GET"
+      statusCode: "200"
+    properties:
+      description: "The ids information detail of the target file"
+  - location:
+      type: "RESPONSE"
+      path: "/file-id/{uuid}"
+      method: "GET"
+      statusCode: "400"
+    properties:
+      description: "Invalid or misformatted uuid"
+  - location:
+      type: "RESPONSE"
+      path: "/file-id/{uuid}"
+      method: "GET"
+      statusCode: "401"
+    properties:
+      description: "The user's token has expired or the user did not supply a valid\
+        \ token"
+  - location:
+      type: "RESPONSE"
+      path: "/file-id/{uuid}"
+      method: "GET"
+      statusCode: "404"
+    properties:
+      description: "The target file uuid could not be found"
+  - location:
+      type: "RESPONSE"
+      path: "/file-id/{uuid}"
+      method: "GET"
+      statusCode: "500"
+    properties:
+      description: "An unexpected error occurred"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+      statusCode: "200"
+    properties:
+      description: "Returns text string 'true' if the given id exists, otherwise 'false'"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+      statusCode: "400"
+    properties:
+      description: "Invalid or misformatted id"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+      statusCode: "401"
+    properties:
+      description: "The user's token has expired or the user did not supply a valid\
+        \ token"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+      statusCode: "404"
+    properties:
+      description: "The target id could not be found"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}/exists"
+      method: "GET"
+      statusCode: "500"
+    properties:
+      description: "An unexpected error occurred"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}"
+      method: "GET"
+      statusCode: "200"
+    properties:
+      description: "A json containing all the ids information is returned"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}"
+      method: "GET"
+      statusCode: "401"
+    properties:
+      description: "The user's token has expired or the user did not supply a valid\
+        \ token"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}"
+      method: "GET"
+      statusCode: "403"
+    properties:
+      description: "THe user is not authorized to use this method"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}"
+      method: "GET"
+      statusCode: "404"
+    properties:
+      description: "The target id could not be found"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid/{id}"
+      method: "GET"
+      statusCode: "500"
+    properties:
+      description: "An unexpected error occurred"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid"
+      method: "POST"
+      statusCode: "200"
+    properties:
+      description: "The generated HuBMAP ids"
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid"
+      method: "POST"
+      statusCode: "400"
+    properties:
+      description: "Invalid or misformatted request body was provided."
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid"
+      method: "POST"
+      statusCode: "401"
+    properties:
+      description: "The user's bearer token has expired or the user did not supply\
+        \ a valid token."
+  - location:
+      type: "RESPONSE"
+      path: "/hmuuid"
+      method: "POST"
+      statusCode: "500"
+    properties:
+      description: "An unexpected error occurred"
+  - location:
+      type: "RESPONSE"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+      statusCode: "200"
+    properties:
+      description: "A json array of ancestor uuids"
+  - location:
+      type: "RESPONSE"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+      statusCode: "400"
+    properties:
+      description: "Invalid or misformatted uuid"
+  - location:
+      type: "RESPONSE"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+      statusCode: "401"
+    properties:
+      description: "The user's token has expired or the user did not supply a valid\
+        \ token"
+  - location:
+      type: "RESPONSE"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+      statusCode: "404"
+    properties:
+      description: "The target uuid could not be found"
+  - location:
+      type: "RESPONSE"
+      path: "/{uuid}/ancestors"
+      method: "GET"
+      statusCode: "500"
+    properties:
+      description: "An unexpected error occurred"
+x-amazon-apigateway-gateway-responses:
+  ACCESS_DENIED:
+    statusCode: 403
+    responseTemplates:
+      application/json: "{ \"message\": \"$context.error.message\", \"hint\": \"$context.authorizer.key\"\
+        , \"http_method\": \"$context.httpMethod\"}"
+  RESOURCE_NOT_FOUND:
+    statusCode: 404
+    responseTemplates:
+      application/json: "{\"message\":$context.error.messageString}"
+  UNAUTHORIZED:
+    statusCode: 401
+    responseTemplates:
+      application/json: "{ \"message\": \"$context.error.message\", \"hint\": \"$context.authorizer.key\"\
+        , \"http_method\": \"$context.httpMethod\"}"
