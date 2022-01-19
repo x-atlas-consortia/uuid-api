@@ -38,6 +38,7 @@ else:
 def init():
     global logger
     global worker
+    global globus_groups
     try:
         logger = logging.getLogger('uuid.service')
         logger.setLevel(logging.INFO)
@@ -48,6 +49,14 @@ def init():
         print("Error opening log file during startup")
         print(str(e))
 
+    if app.config['GLOBUS_GROUPS'] is True:
+        try:
+            with open('./instance/globus-groups.json') as jsonFile:
+                globus_groups = json.load(jsonFile)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+    else:
+        globus_groups = None
     try:
         if 'APP_CLIENT_ID' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
             raise Exception("Required configuration parameter APP_CLIENT_ID not found in application configuration.")
@@ -61,7 +70,7 @@ def init():
         dbUsername = app.config['DB_USERNAME']
         dbPassword = app.config['DB_PASSWORD']
         worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername,
-                            dbPassword=dbPassword)
+                            dbPassword=dbPassword, globusGroups=globus_groups)
         logger.info("initialized")
 
     except Exception as e:
