@@ -239,6 +239,78 @@ def get_ancestors(uuid):
         return (Response("Unexpected error: " + eMsg, 500))
 
 
+
+# Get the information for all files attached to a specific entity
+# Example call GET to https://uuid.api.hubmapcosortium.org/<entity-id>/files
+#                 with an Authorization Bearer header containing a valid HuBMAP Globus token
+#
+# input: id (hubmap_id or uuid) of the parent entity in path,<entity-id> above 
+# output: an array of dicts with each dict containing the attributes of a file
+#         file attributes:
+#             path: the local file system path, including name of the file
+#         checksum: the checksum of the file
+#             size: the size of the file
+#        file_uuid: the uuid of the file
+#         base_dir: the base directory type, one of
+#                      INGEST_PORTAL_UPLOAD - the file was uploaded into the space for file uploads from the Ingest UI
+#                               DATA_UPLOAD - the file was upload into the upload space for datasets usually via Globus
+#
+#         Will return an empty array if no files are attached to the entity
+#
+# Returns:
+#    200:  As described above on success, example below
+#    400:  If id is not found
+#    401:  Authentication failed
+#    403:  No authorization to use this method
+#    500:  An unexpected error occurred
+#
+#Example Output, status 200
+#
+#        [
+#            {
+#                "path": "hg19.exonic+intronic/alignment/Puck_200903_02_mapping_rate.txt",
+#                "checksum": "c39c7653bd0802eb875af8eb8cb9f680",
+#                "size": 276,
+#                "base_dir": "DATA_UPLOAD",
+#                "file_uuid": "11d6412f1864ee7945f75e1f6b661dfa"
+#            },
+#            {
+#                "path": "hg19.exonic+intronic/fastq/Puck_200903_02.read2.fastq.gz",
+#                "checksum": "ba8f5f30df2150834b2e1a86c2773f6a",
+#                "size": 5023066884,
+#                "base_dir": "DATA_UPLOAD",
+#                "file_uuid": "15fad895db1472c6b9167e0f6e01762a"
+#            },
+#            {
+#                "path": "hg19.exonic+intronic/barcode_matching/BeadBarcodes.txt",
+#                "checksum": "38de80f88dc451d95179db50ce5e21e5",
+#                "size": 2287908,
+#                "base_dir": "DATA_UPLOAD",
+#                "file_uuid": "250066e0b3bd019e646d6e83a842f4d0"
+#            },
+#            {
+#                "path": "hg19.exonic+intronic/barcode_matching/Puck_200903_02_unique_matched_illumina_barcodes.txt",
+#                "checksum": "12e143d90c07871c7993ce39602e93b4",
+#                "size": 710310,
+#                "base_dir": "DATA_UPLOAD",
+#                "file_uuid": "5dd8f0a806a5d6eff9f5a64fa011691d"
+#            }
+#        ]
+
+@app.route('/<entity_id>/files')
+@secured(groups="HuBMAP-read")
+def get_file_info(entity_id):
+    global worker
+    global logger
+    try:
+        file_info = worker.get_file_info(entity_id)
+        if isinstance(file_info, Response): return file_info
+        return Response(response=json.dumps(file_info), mimetype="application/json")
+    except Exception as e:
+        eMsg = str(e)
+        logger.error(e, exc_info=True)
+        return(Response("Unexpected error: " + eMsg, 500))
+
 if __name__ == "__main__":
     try:
         app.run(host='0.0.0.0', port="5001")

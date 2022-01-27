@@ -211,4 +211,51 @@ paths:
           description: The target uuid could not be found
         '500':
           description: An unexpected error occurred
-  
+
+  '/{id}/files':
+    get:
+      summary: Get the information about files attached to a given entity given an entity id (e.g. HBM123.ABCD.456) or UUID
+      parameters:
+        - name: id
+          in: path
+          description: Either an HuBMAP ID (e.g. HBM123.ABCD.456) or UUID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A json array containing an object for each file returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    file_uuid:
+                      type: string
+                      description: The uuid of the file
+                    path:
+                      type: string
+                      description: The local file system path including name of the file
+                    checksum:
+                      type: string
+                      description: The checksum of the file
+                    size:
+                      type: string
+                      description: Integer size of the file in bytes
+                    base_dir:
+                      type: string
+                      enum:
+                        - INGEST_PORTAL_UPLOAD
+                        - DATA_UPLOAD
+                      description: One of DATA_UPLOAD|INGEST_PORTAL_UPLOAD. INGEST_PORTAL_UPLOAD means the file was uploaded into the space for file uploads from the Ingest UI.  DATA_UPLOAD means the file was upload into the upload space for datasets usually via Globus
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '403':
+          description: THe user is not authorized to use this method
+        '404':
+          description: The target id could not be found
+        '500':
+          description: An unexpected error occurred
+
