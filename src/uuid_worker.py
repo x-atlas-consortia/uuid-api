@@ -113,12 +113,12 @@ def stripAppId(appId):
 class UUIDWorker:
     authHelper = None
 
-    def __init__(self, clientId, clientSecret, dbHost, dbName, dbUsername, dbPassword, globusGroups):
+    def __init__(self, clientId, clientSecret, dbHost, dbName, dbUsername, dbPassword):
         if clientId is None or clientSecret is None or isBlank(clientId) or isBlank(clientSecret):
             raise Exception("Globus client id and secret are required in AuthHelper")
 
         if not AuthHelper.isInitialized():
-            self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret, globusGroups=globusGroups)
+            self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
         else:
             self.authHelper.instance()
 
