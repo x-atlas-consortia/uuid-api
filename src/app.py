@@ -29,12 +29,16 @@ elif app.config['API_TYPE'] == 'SENNET':
     app_uuid = 'snuuid'
     # TODO: need to add new group name to auth library
     group_name = 'HuBMAP'
+else:
+    raise ValueError(
+        "Required configuration parameter API_TYPE not found in application configuration. Must be set to 'HUBMAP' or 'SENNET'.")
 
 
 @app.before_first_request
 def init():
     global logger
     global worker
+    global globus_groups
     try:
         logger = logging.getLogger('uuid.service')
         logger.setLevel(logging.INFO)

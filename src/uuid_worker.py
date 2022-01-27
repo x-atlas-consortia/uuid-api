@@ -18,7 +18,7 @@ app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname
             instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
 
-uuid_table = uuid_key = base_id = ancestor_table = files_table = app_id = None
+uuid_table = uuid_key = base_id = ancestor_table = files_table = app_id_prefix = application_id = None
 API_TYPE = app.config['API_TYPE']
 BASE_DIR_TYPES = app.config['BASE_DIR_TYPES']
 ID_ENTITY_TYPES = app.config['ID_ENTITY_TYPES']
@@ -33,7 +33,8 @@ if API_TYPE == 'HUBMAP':
     ancestor_table = 'hm_ancestors'
     files_table = 'hm_files'
     data_center = 'hm_data_centers'
-    app_id = 'HBM'
+    app_id_prefix = 'HBM'
+    application_id = 'hubmap_id'
 elif API_TYPE == 'SENNET':
     uuid_table = 'sn_uuids'
     uuid_key = 'sn_uuid'
@@ -41,7 +42,11 @@ elif API_TYPE == 'SENNET':
     ancestor_table = 'sn_ancestors'
     files_table = 'sn_files'
     data_center = 'sn_data_centers'
-    app_id = 'SNT'
+    app_id_prefix = 'SNT'
+    application_id = 'sennet_id'
+else:
+    raise ValueError(
+        "Required configuration parameter API_TYPE not found in application configuration. Must be set to 'HUBMAP' or 'SENNET'.")
 
 MAX_GEN_IDS = 200
 INSERT_SQL = "INSERT INTO " + uuid_table + " (" + uuid_key + ", " + base_id + ", ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
@@ -99,7 +104,7 @@ def isValidAppId(app_id):
 def stripAppId(appId):
     if isBlank(appId): return appId
     thmid = appId.strip();
-    if thmid.lower().startswith(app_id.lower()):
+    if thmid.lower().startswith(app_id_prefix.lower()):
         thmid = thmid[3:]
     if thmid.startswith(':'): thmid = thmid[1:]
     return thmid.strip().replace('-', '').replace('.', '').replace(' ', '')
@@ -444,7 +449,7 @@ class UUIDWorker:
                         previous_app_ids.add(ins_app_base_id)
                         ins_display_app_id = self.__display_app_id(ins_app_base_id)
                         thisId[base_id] = ins_app_base_id
-                        thisId["app_id"] = ins_display_app_id
+                        thisId[application_id] = ins_display_app_id
                     else:
                         ins_app_base_id = None
 
@@ -555,7 +560,7 @@ class UUIDWorker:
         return excluded
 
     def __display_app_id(self, base_id):
-        new_id = app_id + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
+        new_id = app_id_prefix + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
         return new_id
 
     def hmidGen(self):
@@ -609,7 +614,7 @@ class UUIDWorker:
 
                 if base_id in record:
                     if  not record[base_id] is None and not record[base_id].strip() == '':
-                        record['app_id'] = self.__display_app_id(record[base_id])
+                        record[application_id] = self.__display_app_id(record[base_id])
                     record.pop(base_id, '')
             else:
                 raise Exception("Multiple results exist for id:" + hmid)
