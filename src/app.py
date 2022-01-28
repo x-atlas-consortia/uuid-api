@@ -226,7 +226,7 @@ def get_file_id(file_uuid):
         logger.error(e, exc_info=True)
         return (Response("Unexpected error: " + eMsg, 500))
 
-@app.route('/<uuid>/ancestors', , methods=["GET"])
+@app.route('/<uuid>/ancestors', methods=["GET"])
 @secured(groups=group_name + "-read")
 def get_ancestors(uuid):
     global worker
