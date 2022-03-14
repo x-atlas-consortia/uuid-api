@@ -34,3 +34,5 @@ test/*.sh
 
 log/*
 !log/README.md
+
+.idea/
