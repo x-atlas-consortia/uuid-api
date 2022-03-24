@@ -9,8 +9,9 @@ DB_NAME = 'hm_uuid'
 DB_USERNAME = 'root'
 DB_PASSWORD = '123'
 
-#Set to either 'SENNET' or 'HUBMAP' depending on which application it should work with
-API_TYPE = 'HUBMAP'
+#Set to either 'SNT' or 'HBM' depending on which application it should work with
+APP_ID_PREFIX = 'HBM'
+SECURE_GROUP = 'HuBMAP-read'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
