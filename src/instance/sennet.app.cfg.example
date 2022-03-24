@@ -9,15 +9,18 @@ DB_NAME = 'hm_uuid'
 DB_USERNAME = 'root'
 DB_PASSWORD = '123'
 
-#Set to either 'SENNET' or 'HUBMAP' depending on which application it should work with
-API_TYPE = 'SENNET'
+#Set to either 'SNT' or 'HBM' depending on which application it should work with
+APP_ID_PREFIX = 'HBM'
+SECURE_GROUP = 'HuBMAP-read'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'SOURCE', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'SOURCE', 'DATASET', 'FILE', 'UPLOAD']
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 
+# Only for HubMap, not SenNet
+SUBMISSION_ID_ENTITY_TYPES = []
 
 #Set to True when you want to overwrite the globus group information. This requires 'globus-groups.json' to contain information
 #Set to False if you do not want to overwrite globus groups
-GLOBUS_GROUPS = False
+GLOBUS_GROUPS = True

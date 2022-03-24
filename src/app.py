@@ -8,6 +8,7 @@ import json
 from flask import Flask, request, Response, jsonify
 
 # HuBMAP commons
+# from hm_auth import secured
 from hubmap_commons.hm_auth import secured
 from hubmap_commons.string_helper import isBlank
 
@@ -19,25 +20,14 @@ app.config.from_pyfile('app.cfg')
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log"
 logger = None
 worker = None
-
-app_uuid = group_name = None
-if app.config['API_TYPE'] == 'HUBMAP':
-    app_uuid = 'hmuuid'
-    group_name = 'HuBMAP'
-
-elif app.config['API_TYPE'] == 'SENNET':
-    app_uuid = 'snuuid'
-    # TODO: need to add new group name to auth library
-    group_name = 'HuBMAP'
-else:
-    raise ValueError(
-        "Required configuration parameter API_TYPE not found in application configuration. Must be set to 'HUBMAP' or 'SENNET'.")
+secure_group = app.config['SECURE_GROUP']
 
 
 @app.before_first_request
 def init():
     global logger
     global worker
+    global globus_groups
     try:
         logger = logging.getLogger('uuid.service')
         logger.setLevel(logging.INFO)
@@ -47,6 +37,15 @@ def init():
     except Exception as e:
         print("Error opening log file during startup")
         print(str(e))
+
+    if app.config['GLOBUS_GROUPS'] is True:
+        try:
+            with open('./instance/globus-groups.json') as jsonFile:
+                globus_groups = json.load(jsonFile)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+    else:
+        globus_groups = None
 
     try:
         if 'APP_CLIENT_ID' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
@@ -61,7 +60,7 @@ def init():
         dbUsername = app.config['DB_USERNAME']
         dbPassword = app.config['DB_PASSWORD']
         worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername,
-                            dbPassword=dbPassword)
+                            dbPassword=dbPassword, globusGroups=globus_groups)
         logger.info("initialized")
 
     except Exception as e:
@@ -73,7 +72,7 @@ def init():
 
 @app.route('/', methods=['GET'])
 def index():
-    return "Hello! This is the " + group_name + " UUID API service :)"
+    return "Hello! This is the UUID API service :)"
 
 
 # Status of MySQL connection
@@ -142,8 +141,9 @@ POST arguments in json
 '''
 
 
-@app.route('/' + app_uuid, methods=["POST"])
-@secured(groups=group_name + "-read")
+# This used to be 'hmuuid' but we are modifying it to be 'uuid'
+@app.route('/uuid', methods=["POST"])
+@secured(groups=secure_group)
 def add_uuid():
     global worker
     global logger
@@ -169,8 +169,8 @@ def add_uuid():
         return (Response("Unexpected error: " + eMsg, 500))
 
 
-@app.route('/' + app_uuid + '/<uuid>', methods=["GET"])
-@secured(groups=group_name + "-read")
+@app.route('/uuid' + '/<uuid>', methods=["GET"])
+@secured(groups=secure_group)
 def get_uuid(uuid):
     global worker
     global logger
@@ -193,8 +193,8 @@ def get_uuid(uuid):
         return (Response("Unexpected error: " + eMsg, 500))
 
 
-@app.route('/' + app_uuid + '/<uuid>/exists', methods=["GET"])
-@secured(groups=group_name + "-read")
+@app.route('/uuid' + '/<uuid>/exists', methods=["GET"])
+@secured(groups=secure_group)
 def is_uuid(uuid):
     global worker
     global logger
@@ -213,7 +213,7 @@ def is_uuid(uuid):
 
 
 @app.route('/file-id/<file_uuid>', methods=["GET"])
-@secured(groups=group_name + "-read")
+@secured(groups=secure_group)
 def get_file_id(file_uuid):
     global worker
     global logger
@@ -226,8 +226,9 @@ def get_file_id(file_uuid):
         logger.error(e, exc_info=True)
         return (Response("Unexpected error: " + eMsg, 500))
 
+
 @app.route('/<uuid>/ancestors', methods=["GET"])
-@secured(groups=group_name + "-read")
+@secured(groups=secure_group)
 def get_ancestors(uuid):
     global worker
     global logger
@@ -239,7 +240,6 @@ def get_ancestors(uuid):
         eMsg = str(e)
         logger.error(e, exc_info=True)
         return (Response("Unexpected error: " + eMsg, 500))
-
 
 
 # Get the information for all files attached to a specific entity
@@ -266,7 +266,7 @@ def get_ancestors(uuid):
 #    403:  No authorization to use this method
 #    500:  An unexpected error occurred
 #
-#Example Output, status 200
+# Example Output, status 200
 #
 #        [
 #            {
@@ -300,7 +300,7 @@ def get_ancestors(uuid):
 #        ]
 
 @app.route('/<entity_id>/files', methods=["GET"])
-@secured(groups=group_name + "-read")
+@secured(groups=secure_group)
 def get_file_info(entity_id):
     global worker
     global logger
@@ -311,7 +311,8 @@ def get_file_info(entity_id):
     except Exception as e:
         eMsg = str(e)
         logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
+        return (Response("Unexpected error: " + eMsg, 500))
+
 
 if __name__ == "__main__":
     try:

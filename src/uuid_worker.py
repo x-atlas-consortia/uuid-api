@@ -10,6 +10,7 @@ from app_db import DBConn
 import copy
 
 # HuBMAP commons
+from hm_auth import AuthHelper
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons import globus_groups
@@ -18,41 +19,18 @@ app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname
             instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
 
-uuid_table = uuid_key = base_id = ancestor_table = files_table = app_id_prefix = application_id = None
-API_TYPE = app.config['API_TYPE']
+APP_ID_PREFIX = app.config['APP_ID_PREFIX']
 BASE_DIR_TYPES = app.config['BASE_DIR_TYPES']
 ID_ENTITY_TYPES = app.config['ID_ENTITY_TYPES']
 ANCESTOR_REQUIRED_ENTITY_TYPES = app.config['ANCESTOR_REQUIRED_ENTITY_TYPES']
 MULTIPLE_ALLOWED_ORGANS = app.config['MULTIPLE_ALLOWED_ORGANS']
 SUBMISSION_ID_ENTITY_TYPES = app.config['SUBMISSION_ID_ENTITY_TYPES']
 
-if API_TYPE == 'HUBMAP':
-    uuid_table = 'hm_uuids'
-    uuid_key = 'hm_uuid'
-    base_id = 'hubmap_base_id'
-    ancestor_table = 'hm_ancestors'
-    files_table = 'hm_files'
-    data_center = 'hm_data_centers'
-    app_id_prefix = 'HBM'
-    application_id = 'hubmap_id'
-elif API_TYPE == 'SENNET':
-    uuid_table = 'sn_uuids'
-    uuid_key = 'sn_uuid'
-    base_id = 'sennet_base_id'
-    ancestor_table = 'sn_ancestors'
-    files_table = 'sn_files'
-    data_center = 'sn_data_centers'
-    app_id_prefix = 'SNT'
-    application_id = 'sennet_id'
-else:
-    raise ValueError(
-        "Required configuration parameter API_TYPE not found in application configuration. Must be set to 'HUBMAP' or 'SENNET'.")
-
 MAX_GEN_IDS = 200
-INSERT_SQL = "INSERT INTO " + uuid_table + " (" + uuid_key + ", " + base_id + ", ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
-INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO " + uuid_table + " (" + uuid_key + ", " + base_id + ", ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
-INSERT_ANCESTOR_SQL = "INSERT INTO " + ancestor_table + " (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
-INSERT_FILE_INFO_SQL = "INSERT INTO " + files_table + " (" + uuid_key + ", PATH, CHECKSUM, SIZE, BASE_DIR) VALUES (%s, %s, %s, %s, %s)"
+INSERT_SQL = "INSERT INTO uuids (uuid, base_id, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
+INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO uuids (uuid, base_id, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
+INSERT_ANCESTOR_SQL = "INSERT INTO ancestors (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
+INSERT_FILE_INFO_SQL = "INSERT INTO files (uuid, PATH, CHECKSUM, SIZE, BASE_DIR) VALUES (%s, %s, %s, %s, %s)"
 # INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM) VALUES (%s, %s, %s)"
 # UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
@@ -62,11 +40,11 @@ HEX_CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D
 # UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
 
 UUID_SELECTS = ""
-if API_TYPE == 'HUBMAP':
-    UUID_SELECTS = "HM_UUID as hm_uuid, HUBMAP_BASE_ID as hubmap_base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, SUBMISSION_ID as submission_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
-elif API_TYPE == 'SENNET':
+if APP_ID_PREFIX == 'HBM':
+    UUID_SELECTS = "UUID as uuid, BASE_ID as base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, SUBMISSION_ID as submission_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
+elif APP_ID_PREFIX == 'SNT':
     # Remove submission reference
-    UUID_SELECTS = "SN_UUID as sn_uuid, SENNET_BASE_ID as sennet_base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
+    UUID_SELECTS = "UUID as uuid, BASE_ID as base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
 
 
 def startsWithComponentPrefix(app_id):
@@ -101,10 +79,10 @@ def isValidAppId(app_id):
     return True
 
 
-def stripAppId(appId):
-    if isBlank(appId): return appId
-    thmid = appId.strip();
-    if thmid.lower().startswith(app_id_prefix.lower()):
+def stripAppId(app_id):
+    if isBlank(app_id): return app_id
+    thmid = app_id.strip();
+    if thmid.lower().startswith(APP_ID_PREFIX.lower()):
         thmid = thmid[3:]
     if thmid.startswith(':'): thmid = thmid[1:]
     return thmid.strip().replace('-', '').replace('.', '').replace(' ', '')
@@ -113,12 +91,12 @@ def stripAppId(appId):
 class UUIDWorker:
     authHelper = None
 
-    def __init__(self, clientId, clientSecret, dbHost, dbName, dbUsername, dbPassword):
+    def __init__(self, clientId, clientSecret, dbHost, dbName, dbUsername, dbPassword, globusGroups=None):
         if clientId is None or clientSecret is None or isBlank(clientId) or isBlank(clientSecret):
             raise Exception("Globus client id and secret are required in AuthHelper")
 
         if not AuthHelper.isInitialized():
-            self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
+            self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret, globusGroups=globusGroups)
         else:
             self.authHelper.instance()
 
@@ -143,7 +121,7 @@ class UUIDWorker:
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(
-                    "select " + uuid_key + ", dc_code from " + data_center + " where " + uuid_key + " = '" + check_id + "' or dc_uuid = '" + check_id + "'")
+                    "select uuid, dc_code from data_centers where uuid = '" + check_id + "' or dc_uuid = '" + check_id + "'")
                 result = curs.fetchone()
                 if result is None:
                     try:
@@ -166,14 +144,14 @@ class UUIDWorker:
                     uuid_json = self.newUUIDs([], "LAB", user_id, user_email, 1, gen_base_ids=False)
                     uuid_info = json.loads(uuid_json)
                     r_val['dc_code'] = lab['tmc_prefix']
-                    r_val[uuid_key] = uuid_info[0]['uuid']
+                    r_val['uuid'] = uuid_info[0]['uuid']
                     curs.execute(
-                        "insert into " + data_center + " (" + uuid_key + ", DC_UUID, DC_CODE) VALUES ('" + r_val[
-                            uuid_key] + "','" + check_id + "','" + r_val['dc_code'] + "')")
+                        "insert into data_centers (uuid, DC_UUID, DC_CODE) VALUES ('" + r_val[
+                            'uuid'] + "','" + check_id + "','" + r_val['dc_code'] + "')")
                     dbConn.commit()
                 else:
                     r_val['dc_code'] = result[1]
-                    r_val[uuid_key] = result[0]
+                    r_val['uuid'] = result[0]
         return r_val
 
     def uuidPost(self, req, nIds):
@@ -229,7 +207,7 @@ class UUIDWorker:
             lab_info = self.__resolve_lab_id(parentIds[0], userId, userEmail)
             if isinstance(lab_info, Response):
                 return lab_info
-            ancestor_ids.append(lab_info[uuid_key])
+            ancestor_ids.append(lab_info['uuid'])
             lab_code = lab_info['dc_code']
         elif parentIds is None:
             ancestor_ids = []
@@ -279,10 +257,10 @@ class UUIDWorker:
 
         uuids = content['hubmap-uuids']
         disp_ids = content['display-ids']
-        
+
         if len(uuids) != len(disp_ids):
             return(Response("The length of the diplay-ids and hubmap-uuids arrays must be the same length", 400))
-        
+
         return self.updateUUIDs(uuids, disp_ids)
     '''
 
@@ -302,7 +280,7 @@ class UUIDWorker:
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(
-                    "select entity_type, descendant_count, submission_id from " + uuid_table + " where " + uuid_key + " = '" + parent_id + "'")
+                    "select entity_type, descendant_count, submission_id from uuids where uuid = '" + parent_id + "'")
                 results = curs.fetchone()
                 anc_entity_type = results[0]
                 desc_count = results[1]
@@ -321,8 +299,8 @@ class UUIDWorker:
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
-                    curs.execute("update " + uuid_table + " set descendant_count = " + str(
-                        desc_count) + " where " + uuid_key + " = '" + parent_id + "'")
+                    curs.execute("update uuids set descendant_count = " + str(
+                        desc_count) + " where uuid = '" + parent_id + "'")
                     dbConn.commit()
                     return r_val
                 # a source
@@ -339,8 +317,8 @@ class UUIDWorker:
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
-                    curs.execute("update " + uuid_table + " set descendant_count = " + str(
-                        desc_count) + " where " + uuid_key + " = '" + parent_id + "'")
+                    curs.execute("update uuids set descendant_count = " + str(
+                        desc_count) + " where uuid = '" + parent_id + "'")
                     dbConn.commit()
                     return r_val
                 # an organ
@@ -391,8 +369,8 @@ class UUIDWorker:
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(anc_submission_id + "-" + str(desc_count))
-                    curs.execute("update " + uuid_table + " set descendant_count = " + str(
-                        desc_count) + " where " + uuid_key + " = '" + parent_id + "'")
+                    curs.execute("update uuids set descendant_count = " + str(
+                        desc_count) + " where uuid = '" + parent_id + "'")
                     dbConn.commit()
                     return r_val
                 else:
@@ -424,10 +402,10 @@ class UUIDWorker:
                 insertParents = []
                 numToGen = min(MAX_GEN_IDS, nIds - i)
                 # generate uuids
-                uuids = self.__nUniqueIds(numToGen, self.uuidGen, uuid_key, previousGeneratedIds=previousUUIDs)
+                uuids = self.__nUniqueIds(numToGen, self.uuidGen, 'uuid', previousGeneratedIds=previousUUIDs)
                 if gen_base_ids:
-                    app_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, base_id,
-                                                        previousGeneratedIds=previous_app_ids)
+                    app_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, 'base_id',
+                                                     previousGeneratedIds=previous_app_ids)
                 else:
                     app_base_ids = [None] * numToGen
 
@@ -448,8 +426,8 @@ class UUIDWorker:
                         ins_app_base_id = app_base_ids[n]
                         previous_app_ids.add(ins_app_base_id)
                         ins_display_app_id = self.__display_app_id(ins_app_base_id)
-                        thisId[base_id] = ins_app_base_id
-                        thisId[application_id] = ins_display_app_id
+                        thisId['base_id'] = ins_app_base_id
+                        thisId["app_id"] = ins_display_app_id
                     else:
                         ins_app_base_id = None
 
@@ -530,9 +508,9 @@ class UUIDWorker:
         return list(ids)
 
     def __findDupsInDB(self, dbColumn, idSet):
-        sql = "select " + dbColumn + " from " + uuid_table + " where " + dbColumn + " IN(" + listToCommaSeparated(idSet,
-                                                                                                                  "'",
-                                                                                                                  True) + ")"
+        sql = "select " + dbColumn + " from uuids where " + dbColumn + " IN(" + listToCommaSeparated(idSet,
+                                                                                                     "'",
+                                                                                                     True) + ")"
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(sql)
@@ -551,7 +529,7 @@ class UUIDWorker:
             else:
                 sql = sql + " UNION ALL "
             sql = sql + "(select '" + ex_id + "' as " + dbColumn + ")"
-        sql = sql + ") as list left join " + uuid_table + " using (" + dbColumn + ") where " + uuid_table + "." + dbColumn + " is null"
+        sql = sql + ") as list left join uuids using (" + dbColumn + ") where uuids." + dbColumn + " is null"
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(sql)
@@ -560,7 +538,7 @@ class UUIDWorker:
         return excluded
 
     def __display_app_id(self, base_id):
-        new_id = app_id_prefix + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
+        new_id = APP_ID_PREFIX + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
         return new_id
 
     def hmidGen(self):
@@ -611,11 +589,10 @@ class UUIDWorker:
                 else:
                     raise Exception("Unknown ancestor type for id:" + hmid)
 
-
-                if base_id in record:
-                    if  not record[base_id] is None and not record[base_id].strip() == '':
-                        record[application_id] = self.__display_app_id(record[base_id])
-                    record.pop(base_id, '')
+                if 'base_id' in record:
+                    if not record['base_id'].strip() == '':
+                        record['app_id'] = self.__display_app_id(record['base_id'])
+                    record.pop('base_id', '')
             else:
                 raise Exception("Multiple results exist for id:" + hmid)
 
@@ -628,11 +605,11 @@ class UUIDWorker:
         tid = stripAppId(app_id)
         if startsWithComponentPrefix(app_id):
             # TODO: This query won't work for SenNet as it doesn't use submission_id
-            sql = "select " + UUID_SELECTS + " from " + uuid_table + " inner join " + ancestor_table + " on " + ancestor_table + ".descendant_uuid = " + uuid_table + "." + uuid_key + " where lower(submission_id) ='" + tidl + "'"
+            sql = "select " + UUID_SELECTS + " from uuids inner join ancestors on ancestors.descendant_uuid = uuids.uuid where lower(submission_id) ='" + tidl + "'"
         elif len(tid) == 10:
-            sql = "select " + UUID_SELECTS + " from " + uuid_table + " inner join " + ancestor_table + " on " + ancestor_table + ".descendant_uuid = " + uuid_table + "." + uuid_key + " where " + base_id + " ='" + tid + "'"
+            sql = "select " + UUID_SELECTS + " from uuids inner join ancestors on ancestors.descendant_uuid = uuids.uuid where base_id ='" + tid + "'"
         elif len(tid) == 32:
-            sql = "select " + UUID_SELECTS + " from " + uuid_table + " inner join " + ancestor_table + " on " + ancestor_table + ".descendant_uuid = " + uuid_table + "." + uuid_key + " where " + uuid_key + " ='" + tid + "'"
+            sql = "select " + UUID_SELECTS + " from uuids inner join ancestors on ancestors.descendant_uuid = uuids.uuid where uuid ='" + tid + "'"
         else:
             return Response("Invalid id (empty or bad length)", 400)
         with closing(self.hmdb.getDBConnection()) as dbConn:
@@ -646,9 +623,9 @@ class UUIDWorker:
             return Response("Could not find the target id: " + app_id, 404)
         if isinstance(results, list) and (len(results) == 0):
             return Response("Could not find the target id: " + app_id, 404)
-        if not uuid_key in results[0]:
+        if not 'uuid' in results[0]:
             return Response("Could not find the target id: " + app_id, 404)
-        if results[0][uuid_key] is None:
+        if results[0]['uuid'] is None:
             return Response("Could not find the target id: " + app_id, 404)
 
         rdict = self._convert_result_id_array(results, app_id)
@@ -663,7 +640,7 @@ class UUIDWorker:
         elif len(tid) == 10:
             return Response(app_id + " is not a valid uuid.", 400)
         elif len(tid) == 32:
-            sql = "select ancestor_uuid from " + ancestor_table + " where descendant_uuid ='" + tid + "'"
+            sql = "select ancestor_uuid from ancestors where descendant_uuid ='" + tid + "'"
         else:
             return Response("Invalid id (empty or bad length)", 400)
 
@@ -687,7 +664,7 @@ class UUIDWorker:
         check_id = fid.strip()
         if isBlank(check_id) or len(check_id) != 32:
             return Response("Invalid file id format.  32 digit hex only.", 400)
-        sql = "select " + uuid_key + ", path, checksum, size, base_dir, ancestor_uuid from " + files_table + " inner join " + ancestor_table + " on " + ancestor_table + ".descendant_uuid = " + files_table + "." + uuid_key + " where " + uuid_key + " = '" + check_id + "'"
+        sql = "select uuid, path, checksum, size, base_dir, ancestor_uuid from files inner join ancestors on ancestors.descendant_uuid = files.uuid where uuid = '" + check_id + "'"
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
                 curs.execute(sql)
@@ -698,9 +675,9 @@ class UUIDWorker:
             return Response("Could not find the target id: " + fid, 404)
         if isinstance(results, list) and (len(results) == 0):
             return Response("Could not find the target id: " + fid, 404)
-        if not uuid_key in results[0]:
+        if not 'uuid' in results[0]:
             return Response("Could not find the target id: " + fid, 404)
-        if results[0][uuid_key] is None:
+        if results[0]['uuid'] is None:
             return Response("Could not find the target id: " + fid, 404)
 
         rdict = self._convert_result_id_array(results, check_id)
@@ -711,7 +688,7 @@ class UUIDWorker:
     def uuid_exists(self, app_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from " + uuid_table + " where " + uuid_key + " = '" + app_id + "'")
+                curs.execute("select count(*) from uuids where uuid = '" + app_id + "'")
                 res = curs.fetchone()
 
         if (res is None or len(res) == 0): return False
@@ -743,7 +720,7 @@ class UUIDWorker:
     def base_id_exists(self, base_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from " + uuid_table + " where " + base_id + " = '" + base_id + "'")
+                curs.execute("select count(*) from uuids where base_id ='" + base_id + "'")
                 res = curs.fetchone()
         if (res is None or len(res) == 0): return False
         if (res[0] == 1): return True
@@ -754,7 +731,7 @@ class UUIDWorker:
     def submission_id_exists(self, hmid):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from " + uuid_table + " where submission_id = '" + hmid + "'")
+                curs.execute("select count(*) from uuids where submission_id = '" + hmid + "'")
                 res = curs.fetchone()
         if (res is None or len(res) == 0): return False
         if (res[0] == 1): return True
@@ -778,49 +755,6 @@ class UUIDWorker:
             self.logger.error(e, exc_info=True)
             return False
 
-    # get the information for all files attached to a specific entity
-    # input: id (hubmap_id or uuid) of the parent entity
-    # output: an array of dicts with each dict containing the attributes of a file
-    #         file attributes:
-    #             path: the local file system path, including name of the file
-    #         checksum: the checksum of the file
-    #             size: the size of the file
-    #        file_uuid: the uuid of the file
-    #         base_dir: the base directory type, one of
-    #                      INGEST_PORTAL_UPLOAD - the file was uploaded into the space for file uploads from the Ingest UI
-    #                               DATA_UPLOAD - the file was upload into the upload space for datasets usually via Globus
-    #
-    def get_file_info(self, entity_id):
-        # The info is a pretty print json string
-        info = self.getIdInfo(entity_id)
-
-        # if getIdInfo returns a Response, it is sending an error back
-        if isinstance(info, Response):
-                return info
-        #convert to dict
-        info_d = json.loads(info)
-
-        if not 'hm_uuid' in info_d:
-            return Response("Error: not corresponding UUID found for " + entity_id, 400)
-
-        entity_uuid = info_d['hm_uuid']
-
-        #query that finds all files associated with entity by joining the ancestors table (entity is the ancestor, files are the descendants) with the files table
-        sql = f"select * from {files_table} left join {ancestor_table} on {ancestor_table }.descendant_uuid = {files_table}.{uuid_key} where {ancestor_table}.ancestor_uuid = '{entity_uuid}';"
-
-        #run the query and morph results to an array of dict
-        with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
-                results = [dict((curs.description[i][0].lower(), value) for i, value in enumerate(row)) for row in curs.fetchall()]
-
-        #remove unneeded result columns and change the name of base_id to file_uuid
-        for item in results:
-            item['file_uuid'] = item[uuid_key]
-            item.pop(uuid_key)
-            item.pop('descendant_uuid')
-            item.pop('ancestor_uuid')
-        return results
 
 ''' 
     def newUUID(self, parentID, entityType, userId, userEmail, submissionId=None):
@@ -834,7 +768,7 @@ class UUIDWorker:
                 count = count + 1
             if count == 100:
                 raise Exception("Unable to generate a unique uuid after 100 attempts")
-            
+
             count = 0;
             while(self.doiExists(hubmap_id) and count < 100):
                 hubmap_id = self.hmidGen()
