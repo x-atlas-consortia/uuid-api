@@ -11,6 +11,9 @@ DB_PASSWORD = '123'
 
 #Set to either 'SNT' or 'HBM' depending on which application it should work with
 APP_ID_PREFIX = 'HBM'
+#Set to the ID used in the entity-api
+APP_ID = 'hubmap_id'
+APP_BASE_ID = 'hubmap_base_id'
 SECURE_GROUP = 'HuBMAP-read'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
