@@ -10,7 +10,7 @@ from app_db import DBConn
 import copy
 
 # HuBMAP commons
-from hm_auth import AuthHelper
+# from hm_auth import AuthHelper
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons import globus_groups
@@ -20,6 +20,9 @@ app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname
 app.config.from_pyfile('app.cfg')
 
 APP_ID_PREFIX = app.config['APP_ID_PREFIX']
+APP_ID = app.config['APP_ID']
+APP_BASE_ID = app.config['APP_BASE_ID']
+
 BASE_DIR_TYPES = app.config['BASE_DIR_TYPES']
 ID_ENTITY_TYPES = app.config['ID_ENTITY_TYPES']
 ANCESTOR_REQUIRED_ENTITY_TYPES = app.config['ANCESTOR_REQUIRED_ENTITY_TYPES']
@@ -96,7 +99,12 @@ class UUIDWorker:
             raise Exception("Globus client id and secret are required in AuthHelper")
 
         if not AuthHelper.isInitialized():
-            self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret, globusGroups=globusGroups)
+            # Depending on the version of the AuthHelper, the globusGroups variable might not be support
+            try:
+                self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret,
+                                                    globusGroups=globusGroups)
+            except TypeError:
+                self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
         else:
             self.authHelper.instance()
 
@@ -426,8 +434,8 @@ class UUIDWorker:
                         ins_app_base_id = app_base_ids[n]
                         previous_app_ids.add(ins_app_base_id)
                         ins_display_app_id = self.__display_app_id(ins_app_base_id)
-                        thisId['base_id'] = ins_app_base_id
-                        thisId["app_id"] = ins_display_app_id
+                        thisId[APP_BASE_ID] = ins_app_base_id
+                        thisId[APP_ID] = ins_display_app_id
                     else:
                         ins_app_base_id = None
 
@@ -591,7 +599,7 @@ class UUIDWorker:
 
                 if 'base_id' in record:
                     if not record['base_id'].strip() == '':
-                        record['app_id'] = self.__display_app_id(record['base_id'])
+                        record[APP_ID] = self.__display_app_id(record['base_id'])
                     record.pop('base_id', '')
             else:
                 raise Exception("Multiple results exist for id:" + hmid)
