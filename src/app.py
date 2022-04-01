@@ -141,7 +141,8 @@ POST arguments in json
 '''
 
 
-# This used to be 'hmuuid' but we are modifying it to be 'uuid'
+# Add backwards compatibility for older version of entity-api
+@app.route('/hmuuid', methods=["POST"])
 @app.route('/uuid', methods=["POST"])
 @secured(groups=secure_group)
 def add_uuid():
@@ -169,7 +170,8 @@ def add_uuid():
         return (Response("Unexpected error: " + eMsg, 500))
 
 
-@app.route('/uuid' + '/<uuid>', methods=["GET"])
+@app.route('/hmuuid/<uuid>', methods=["GET"])
+@app.route('/uuid/<uuid>', methods=["GET"])
 @secured(groups=secure_group)
 def get_uuid(uuid):
     global worker
@@ -193,7 +195,8 @@ def get_uuid(uuid):
         return (Response("Unexpected error: " + eMsg, 500))
 
 
-@app.route('/uuid' + '/<uuid>/exists', methods=["GET"])
+@app.route('/hmuuid/<uuid>/exists', methods=["GET"])
+@app.route('/uuid/<uuid>/exists', methods=["GET"])
 @secured(groups=secure_group)
 def is_uuid(uuid):
     global worker
