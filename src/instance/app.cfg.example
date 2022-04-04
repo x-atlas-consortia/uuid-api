@@ -9,7 +9,12 @@ DB_NAME = 'hm_uuid'
 DB_USERNAME = 'root'
 DB_PASSWORD = '123'
 
-API_TYPE = 'HUBMAP'
+#Set to either 'SNT' or 'HBM' depending on which application it should work with
+APP_ID_PREFIX = 'HBM'
+#Set to the ID used in the entity-api
+APP_ID = 'hubmap_id'
+APP_BASE_ID = 'hubmap_base_id'
+SECURE_GROUP = 'HuBMAP-read'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
