@@ -21,6 +21,7 @@ app.config.from_pyfile('app.cfg')
 
 APP_ID_PREFIX = app.config['APP_ID_PREFIX']
 APP_ID = app.config['APP_ID']
+APP_UUID = app.config['APP_UUID']
 APP_BASE_ID = app.config['APP_BASE_ID']
 
 BASE_DIR_TYPES = app.config['BASE_DIR_TYPES']
@@ -565,7 +566,7 @@ class UUIDWorker:
 
     def getIdExists(self, hmid):
         if not isValidAppId(hmid):
-            return Response("Invalid " + API_TYPE + " Id", 400)
+            return Response("Invalid Id", 400)
         tid = stripAppId(hmid)
         if startsWithComponentPrefix(hmid):
             return self.submission_id_exists(hmid.strip())
@@ -574,7 +575,7 @@ class UUIDWorker:
         elif len(tid) == 32:
             return self.uuid_exists(tid.lower())
         else:
-            return Response("Invalid " + API_TYPE + " Id (or empty or bad length)", 400)
+            return Response("Invalid Id (or empty or bad length)", 400)
 
     # convert csv list of ancestor ids to a list
     # convert hubmap base id to a hubmap id (display version)
@@ -637,6 +638,7 @@ class UUIDWorker:
             return Response("Could not find the target id: " + app_id, 404)
 
         rdict = self._convert_result_id_array(results, app_id)
+        rdict = self.modify_app_specific_uuid(rdict)
         return json.dumps(rdict, indent=4, sort_keys=True, default=str)
 
     def getAncestors(self, app_id):
@@ -666,6 +668,7 @@ class UUIDWorker:
             return Response("Could not find the target id or target id has no ancestors: " + app_id, 404)
 
         #        rdict = self._convert_result_id_array(results, app_id)
+        results = self.modify_app_specific_uuid(results)
         return json.dumps(results, indent=4, sort_keys=True, default=str)
 
     def getFileIdInfo(self, fid):
@@ -691,6 +694,8 @@ class UUIDWorker:
         rdict = self._convert_result_id_array(results, check_id)
         if 'checksum' in rdict and rdict['checksum'] is None: rdict.pop('checksum')
         if 'size' in rdict and rdict['size'] is None: rdict.pop('size')
+
+        rdict = self.modify_app_specific_uuid(rdict)
         return json.dumps(rdict, indent=4, sort_keys=True, default=str)
 
     def uuid_exists(self, app_id):
@@ -733,7 +738,7 @@ class UUIDWorker:
         if (res is None or len(res) == 0): return False
         if (res[0] == 1): return True
         if (res[0] == 0): return False
-        raise Exception("Multiple " + API_TYPE + " base ids found matching " + base_id)
+        raise Exception("Multiple base ids found matching " + base_id)
 
     # Only used for HubMap
     def submission_id_exists(self, hmid):
@@ -745,6 +750,11 @@ class UUIDWorker:
         if (res[0] == 1): return True
         if (res[0] == 0): return False
         raise Exception("Multiple HuBMAP IDs found matching " + hmid)
+
+    def modify_app_specific_uuid(self, dict):
+        dict[APP_UUID] = dict['uuid']
+        del dict['uuid']
+        return dict
 
     def testConnection(self):
         try:
