@@ -773,6 +773,51 @@ class UUIDWorker:
             self.logger.error(e, exc_info=True)
             return False
 
+    # get the information for all files attached to a specific entity
+    # input: id (hubmap_id or uuid) of the parent entity
+    # output: an array of dicts with each dict containing the attributes of a file
+    #         file attributes:
+    #             path: the local file system path, including name of the file
+    #         checksum: the checksum of the file
+    #             size: the size of the file
+    #        file_uuid: the uuid of the file
+    #         base_dir: the base directory type, one of
+    #                      INGEST_PORTAL_UPLOAD - the file was uploaded into the space for file uploads from the Ingest UI
+    #                               DATA_UPLOAD - the file was upload into the upload space for datasets usually via Globus
+    #
+    def get_file_info(self, entity_id):
+        # The info is a pretty print json string
+        info = self.getIdInfo(entity_id)
+
+        # if getIdInfo returns a Response, it is sending an error back
+        if isinstance(info, Response):
+            return info
+        # convert to dict
+        info_d = json.loads(info)
+
+        if not 'uuid' in info_d:
+            return Response("Error: not corresponding UUID found for " + entity_id, 400)
+
+        entity_uuid = info_d['uuid']
+
+        # query that finds all files associated with entity by joining the ancestors table (entity is the ancestor, files are the descendants) with the files table
+        sql = f"select * from files left join ancestors on ancestors.descendant_uuid = files.uuid where ancestors.ancestor_uuid = '{entity_uuid}';"
+
+        # run the query and morph results to an array of dict
+        with closing(self.hmdb.getDBConnection()) as dbConn:
+            with closing(dbConn.cursor()) as curs:
+                curs.execute(sql)
+                results = [dict((curs.description[i][0].lower(), value) for i, value in enumerate(row)) for row in
+                           curs.fetchall()]
+
+        # remove unneeded result columns and change the name of base_id to file_uuid
+        for item in results:
+            item['file_uuid'] = item['uuid']
+            item.pop('uuid')
+            item.pop('descendant_uuid')
+            item.pop('ancestor_uuid')
+        return results
+
 
 ''' 
     def newUUID(self, parentID, entityType, userId, userEmail, submissionId=None):
