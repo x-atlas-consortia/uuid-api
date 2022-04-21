@@ -19,6 +19,7 @@ app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname
             instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
 
+# These application specific IDs are used to generalize the uuid-api to allow it to work with specific instances of entity-api
 APP_ID_PREFIX = app.config['APP_ID_PREFIX']
 APP_ID = app.config['APP_ID']
 APP_UUID = app.config['APP_UUID']
@@ -795,10 +796,10 @@ class UUIDWorker:
         # convert to dict
         info_d = json.loads(info)
 
-        if not 'uuid' in info_d:
+        if not APP_UUID in info_d:
             return Response("Error: not corresponding UUID found for " + entity_id, 400)
 
-        entity_uuid = info_d['uuid']
+        entity_uuid = info_d[APP_UUID]
 
         # query that finds all files associated with entity by joining the ancestors table (entity is the ancestor, files are the descendants) with the files table
         sql = f"select * from files left join ancestors on ancestors.descendant_uuid = files.uuid where ancestors.ancestor_uuid = '{entity_uuid}';"
