@@ -8,22 +8,26 @@ import json
 from flask import Flask, request, Response, jsonify
 
 # HuBMAP commons
+# from hm_auth import secured
 from hubmap_commons.hm_auth import secured
 from hubmap_commons.string_helper import isBlank
 
-
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
-app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
+app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
+            instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
 
-LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
+LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log"
 logger = None
 worker = None
+secure_group = app.config['SECURE_GROUP']
+
 
 @app.before_first_request
 def init():
     global logger
     global worker
+    global globus_groups
     try:
         logger = logging.getLogger('uuid.service')
         logger.setLevel(logging.INFO)
@@ -34,18 +38,29 @@ def init():
         print("Error opening log file during startup")
         print(str(e))
 
-    try:        
+    if app.config['GLOBUS_GROUPS'] is True:
+        try:
+            with open('./instance/globus-groups.json') as jsonFile:
+                globus_groups = json.load(jsonFile)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+    else:
+        globus_groups = None
+
+    try:
         if 'APP_CLIENT_ID' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
             raise Exception("Required configuration parameter APP_CLIENT_ID not found in application configuration.")
         if 'APP_CLIENT_SECRET' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
-            raise Exception("Required configuration parameter APP_CLIENT_SECRET not found in application configuration.")
+            raise Exception(
+                "Required configuration parameter APP_CLIENT_SECRET not found in application configuration.")
         cId = app.config['APP_CLIENT_ID']
         cSecret = app.config['APP_CLIENT_SECRET']
         dbHost = app.config['DB_HOST']
         dbName = app.config['DB_NAME']
         dbUsername = app.config['DB_USERNAME']
         dbPassword = app.config['DB_PASSWORD']
-        worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername, dbPassword=dbPassword)
+        worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername,
+                            dbPassword=dbPassword, globusGroups=globus_groups)
         logger.info("initialized")
 
     except Exception as e:
@@ -55,10 +70,10 @@ def init():
         print("Check the log file for further information: " + LOG_FILE_NAME)
 
 
-
-@app.route('/', methods = ['GET'])
+@app.route('/', methods=['GET'])
 def index():
-    return "Hello! This is HuBMAP UUID API service :)"
+    return "Hello! This is the UUID API service :)"
+
 
 # Status of MySQL connection
 @app.route('/status', methods=['GET'])
@@ -76,7 +91,7 @@ def status():
     dbcheck = worker.testConnection()
     if dbcheck:
         response_data['mysql_connection'] = True
-   
+
     return jsonify(response_data)
 
 
@@ -124,9 +139,13 @@ POST arguments in json
             match the entity_count argument
       
 '''
+
+
+# Add backwards compatibility for older version of entity-api
 @app.route('/hmuuid', methods=["POST"])
-@secured(groups="HuBMAP-read")
-def add_hmuuid():
+@app.route('/uuid', methods=["POST"])
+@secured(groups=secure_group)
+def add_uuid():
     global worker
     global logger
     try:
@@ -139,26 +158,28 @@ def add_hmuuid():
             else:
                 rjson = worker.uuidPost(request, 1)
             if isinstance(rjson, Response):
-                return rjson                
-            #jsonStr = json.dumps(rjson)
-            
+                return rjson
+                # jsonStr = json.dumps(rjson)
+
             return Response(rjson, 200, {'Content-Type': "application/json"})
         else:
             return Response("Invalid request.  Use POST to create a UUID", 500)
     except Exception as e:
         eMsg = str(e)
         logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
+        return (Response("Unexpected error: " + eMsg, 500))
 
-@app.route('/hmuuid/<hmuuid>', methods=["GET"])
-@secured(groups="HuBMAP-read")
-def get_hmuuid(hmuuid):
+
+@app.route('/hmuuid/<uuid>', methods=["GET"])
+@app.route('/uuid/<uuid>', methods=["GET"])
+@secured(groups=secure_group)
+def get_uuid(uuid):
     global worker
     global logger
     try:
         if request.method == "GET":
             # The info is a pretty print json string
-            info = worker.getIdInfo(hmuuid)
+            info = worker.getIdInfo(uuid)
 
             # if getIdInfo returns a Response, it is sending an error back
             if isinstance(info, Response):
@@ -167,32 +188,35 @@ def get_hmuuid(hmuuid):
             # Add the json MIME header in response
             return Response(response=info, mimetype="application/json")
         else:
-            return Response ("Invalid request use GET to retrieve UUID information", 500)
-    except Exception as e:                                                                                                            
-        eMsg = str(e)                                                                                                                 
-        logger.error(e, exc_info=True)                                                                                                
-        return(Response("Unexpected error: " + eMsg, 500))    
+            return Response("Invalid request use GET to retrieve UUID information", 500)
+    except Exception as e:
+        eMsg = str(e)
+        logger.error(e, exc_info=True)
+        return (Response("Unexpected error: " + eMsg, 500))
 
-@app.route('/hmuuid/<hmuuid>/exists', methods=["GET"])
-@secured(groups="HuBMAP-read")
-def is_hmuuid(hmuuid):
+
+@app.route('/hmuuid/<uuid>/exists', methods=["GET"])
+@app.route('/uuid/<uuid>/exists', methods=["GET"])
+@secured(groups=secure_group)
+def is_uuid(uuid):
     global worker
     global logger
     try:
         if request.method == "GET":
-            exists = worker.getIdExists(hmuuid)
+            exists = worker.getIdExists(uuid)
             if isinstance(exists, Response):
                 return exists
             return json.dumps(exists)
         else:
-            return Response ("Invalid request use GET to check the status of a UUID", 500)
+            return Response("Invalid request use GET to check the status of a UUID", 500)
     except Exception as e:
         eMsg = str(e)
         logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
+        return (Response("Unexpected error: " + eMsg, 500))
+
 
 @app.route('/file-id/<file_uuid>', methods=["GET"])
-@secured(groups="HuBMAP-read")
+@secured(groups=secure_group)
 def get_file_id(file_uuid):
     global worker
     global logger
@@ -203,10 +227,11 @@ def get_file_id(file_uuid):
     except Exception as e:
         eMsg = str(e)
         logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
+        return (Response("Unexpected error: " + eMsg, 500))
 
-@app.route('/<uuid>/ancestors')
-@secured(groups="HuBMAP-read")
+
+@app.route('/<uuid>/ancestors', methods=["GET"])
+@secured(groups=secure_group)
 def get_ancestors(uuid):
     global worker
     global logger
@@ -217,7 +242,7 @@ def get_ancestors(uuid):
     except Exception as e:
         eMsg = str(e)
         logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
+        return (Response("Unexpected error: " + eMsg, 500))
 
 
 # Get the information for all files attached to a specific entity
@@ -244,7 +269,7 @@ def get_ancestors(uuid):
 #    403:  No authorization to use this method
 #    500:  An unexpected error occurred
 #
-#Example Output, status 200
+# Example Output, status 200
 #
 #        [
 #            {
@@ -277,8 +302,8 @@ def get_ancestors(uuid):
 #            }
 #        ]
 
-@app.route('/<entity_id>/files')
-@secured(groups="HuBMAP-read")
+@app.route('/<entity_id>/files', methods=["GET"])
+@secured(groups=secure_group)
 def get_file_info(entity_id):
     global worker
     global logger
@@ -289,7 +314,8 @@ def get_file_info(entity_id):
     except Exception as e:
         eMsg = str(e)
         logger.error(e, exc_info=True)
-        return(Response("Unexpected error: " + eMsg, 500))
+        return (Response("Unexpected error: " + eMsg, 500))
+
 
 if __name__ == "__main__":
     try:
@@ -299,5 +325,3 @@ if __name__ == "__main__":
         print(str(e))
         logger.error(e, exc_info=True)
         print("Check the log file for further information: " + LOG_FILE_NAME)
-
-

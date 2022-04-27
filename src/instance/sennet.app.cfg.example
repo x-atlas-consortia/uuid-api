@@ -10,21 +10,20 @@ DB_USERNAME = 'root'
 DB_PASSWORD = '123'
 
 #Set to either 'SNT' or 'HBM' depending on which application it should work with
-APP_ID_PREFIX = 'HBM'
+APP_ID_PREFIX = 'SNT'
 #Set to the ID used in the entity-api
-APP_ID = 'hubmap_id'
-APP_UUID = 'hm_uuid'
-APP_BASE_ID = 'hubmap_base_id'
+APP_ID = 'sennet_id'
+APP_BASE_ID = 'sennet_base_id'
 SECURE_GROUP = 'HuBMAP-read'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
-ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
-ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'UPLOAD']
+ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'SOURCE', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'SOURCE', 'DATASET', 'FILE', 'UPLOAD']
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 
 # Only for HubMap, not SenNet
-SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
+SUBMISSION_ID_ENTITY_TYPES = []
 
 #Set to True when you want to overwrite the globus group information. This requires 'globus-groups.json' to contain information
 #Set to False if you do not want to overwrite globus groups
-GLOBUS_GROUPS = False
+GLOBUS_GROUPS = True
