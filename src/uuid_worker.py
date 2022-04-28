@@ -339,11 +339,11 @@ class UUIDWorker:
                             400)
                     organ_code = organ_code.strip().upper()
                     curs.execute(
-                        "select organ_count from hm_organs where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+                        "select organ_count from organs where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
                     org_res = curs.fetchone()
                     if org_res is None:
                         curs.execute(
-                            "insert into hm_organs (DONOR_UUID, ORGAN_CODE, ORGAN_COUNT) VALUE ('" + parent_id + "', '" + organ_code + "', 0)")
+                            "insert into organs (DONOR_UUID, ORGAN_CODE, ORGAN_COUNT) VALUE ('" + parent_id + "', '" + organ_code + "', 0)")
                         dbConn.commit()
                         org_count = 0
                     else:
@@ -365,7 +365,7 @@ class UUIDWorker:
                             org_count = org_count + 1
                             r_val.append(anc_submission_id + "-" + organ_code + padLeadingZeros(org_count, 2))
 
-                    curs.execute("update hm_organs set organ_count = " + str(
+                    curs.execute("update organs set organ_count = " + str(
                         org_count) + " where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
                     dbConn.commit()
                     return r_val
