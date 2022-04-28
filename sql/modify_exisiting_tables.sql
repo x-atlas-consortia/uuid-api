@@ -2,7 +2,8 @@
 Rename TABLE hm_ancestors to ancestors,
 	hm_data_centers to data_centers,
  	hm_files to files,
-	hm_uuids to uuids;
+	hm_uuids to uuids,
+	hm_organs to organs;
 
 -- Rename various columns to be more generalized
 -- Alter table 'uuids'
