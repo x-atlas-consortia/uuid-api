@@ -668,9 +668,8 @@ class UUIDWorker:
         if isinstance(results, list) and (len(results) == 0):
             return Response("Could not find the target id or target id has no ancestors: " + app_id, 404)
 
-        #        rdict = self._convert_result_id_array(results, app_id)
-        results = self.modify_app_specific_uuid(results)
-        return json.dumps(results, indent=4, sort_keys=True, default=str)
+        rdict = self._convert_result_id_array(results, app_id)
+        return json.dumps(rdict, indent=4, sort_keys=True, default=str)
 
     def getFileIdInfo(self, fid):
         check_id = fid.strip()
