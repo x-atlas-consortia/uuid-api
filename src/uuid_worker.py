@@ -1,5 +1,7 @@
 import os
 import logging
+
+import mysql.connector.errors
 from flask import Flask, Response
 import threading
 import secrets
@@ -17,7 +19,8 @@ from hubmap_commons import globus_groups
 
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
             instance_relative_config=True)
-app.config.from_pyfile('app.cfg')
+app.config.from_pyfile('app.cfg') #address with https://github.com/hubmapconsortium/uuid-api/issues/79, but coordinate with app.py in meantime.
+#app.config.from_pyfile('sennet.app.cfg')
 
 # These application specific IDs are used to generalize the uuid-api to allow it to work with specific instances of entity-api
 APP_ID_PREFIX = app.config['APP_ID_PREFIX']
@@ -32,25 +35,180 @@ MULTIPLE_ALLOWED_ORGANS = app.config['MULTIPLE_ALLOWED_ORGANS']
 SUBMISSION_ID_ENTITY_TYPES = app.config['SUBMISSION_ID_ENTITY_TYPES']
 
 MAX_GEN_IDS = 200
-INSERT_SQL = "INSERT INTO uuids (uuid, base_id, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL) VALUES (%s, %s, %s, %s, %s, %s)"
-INSERT_SQL_WITH_SUBMISSION_ID = "INSERT INTO uuids (uuid, base_id, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL, SUBMISSION_ID) VALUES (%s, %s, %s, %s, %s, %s,%s)"
-INSERT_ANCESTOR_SQL = "INSERT INTO ancestors (DESCENDANT_UUID, ANCESTOR_UUID) VALUES (%s, %s)"
-INSERT_FILE_INFO_SQL = "INSERT INTO files (uuid, PATH, CHECKSUM, SIZE, BASE_DIR) VALUES (%s, %s, %s, %s, %s)"
-# INSERT_FILE_INFO_SQL = "INSERT INTO hm_files (HM_UUID, PATH, CHECKSUM) VALUES (%s, %s, %s)"
-# UPDATE_SQL = "UPDATE hm_uuids set hubmap_id = %s where HMUUID = %s"
 
 APPID_ALPHA_CHARS = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Z']
 APPID_NUM_CHARS = ['2', '3', '4', '5', '6', '7', '8', '9']
 HEX_CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
-# UUID_SELECTS = "HMUUID as hmuuid, DOI_SUFFIX as doiSuffix, ENTITY_TYPE as type, PARENT_UUID as parentId, TIME_GENERATED as timeStamp, USER_ID as userId, HUBMAP_ID as hubmapId, USER_EMAIL as email"
 
-UUID_SELECTS = ""
-if APP_ID_PREFIX == 'HBM':
-    UUID_SELECTS = "UUID as uuid, BASE_ID as base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, SUBMISSION_ID as submission_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
-elif APP_ID_PREFIX == 'SNT':
-    # Remove submission reference
-    UUID_SELECTS = "UUID as uuid, BASE_ID as base_id, ENTITY_TYPE as type, TIME_GENERATED as time_generated, USER_ID as user_id, USER_EMAIL as email, GROUP_CONCAT(ancestor_uuid) as ancestor_ids"
+from enum import Enum
+class DataIdType(Enum):
+    INVALID = 'invalid'
+    UUID = 'UUID'
+    BASE_ID = 'BASE_ID'
+    SUBMISSION_ID = 'SUBMISSION_ID'
 
+# Set up scalars with SQL strings matching the paramstyle of the database module, as
+# specified at https://peps.python.org/pep-0249
+#
+# Using the "format" paramstyle with mysql-connector-python module for MySQL 8.0+
+#
+# Ignore threat of unsanitized user input for SQL injection, XSS, etc. due to current
+# nature of site at AWS, UUID format checking in this microservice, etc.
+SQL_INSERT_UUIDS = \
+    ("INSERT INTO uuids"
+     " (uuid, ENTITY_TYPE, TIME_GENERATED, USER_ID, USER_EMAIL)"
+     " VALUES"
+     " (%s, %s, %s, %s, %s)"
+     )
+
+SQL_INSERT_UUIDS_ATTRIBUTES_DEFAULT_DESC_COUNT = \
+    ("INSERT INTO uuids_attributes "
+     " (UUID, BASE_ID, SUBMISSION_ID)"
+     " VALUES"
+     " (%s, %s, %s)"
+     )
+
+SQL_INSERT_ANCESTORS = \
+    ("INSERT INTO ancestors"
+     " (DESCENDANT_UUID, ANCESTOR_UUID)"
+     " VALUES"
+     " (%s, %s)"
+     )
+
+SQL_INSERT_FILES = \
+    ("INSERT INTO files"
+     " (UUID, PATH, CHECKSUM, SIZE, BASE_DIR)"
+     " VALUES"
+     " (%s, %s, %s, %s, %s)"
+     )
+
+SQL_SELECT_ANCESTORS_OF_DESCENDANT_UUID = \
+    ("SELECT ANCESTOR_UUID"
+     " FROM ancestors"
+     " WHERE DESCENDANT_UUID = %s"
+     )
+
+SQL_SELECT_FILES_DESCENDED_FROM_ANCESTOR_UUID = \
+    ("SELECT UUID AS uuid"
+     "       ,PATH AS path"
+     "       ,CHECKSUM AS checksum"
+     "       ,SIZE AS size"
+     "       ,BASE_DIR AS base_dir"
+     "       ,ANCESTOR_UUID AS ancestor_uuid"
+     " FROM files"
+     "  INNER JOIN ancestors ON ancestors.DESCENDANT_UUID = files.UUID"
+     " WHERE ancestors.ANCESTOR_UUID = %s"
+     )
+
+SQL_SELECT_FILES_INFO_INCLUDING_ANCESTOR = \
+    ("SELECT UUID AS uuid"
+     "       ,PATH AS path"
+     "       ,CHECKSUM AS checksum"
+     "       ,SIZE AS size"
+     "       ,BASE_DIR AS base_dir"
+     "       ,ANCESTOR_UUID AS ancestor_uuid"
+     " FROM files"
+     "  INNER JOIN ancestors ON ancestors.DESCENDANT_UUID = files.UUID"
+     " WHERE files.UUID = %s"
+     )
+
+SQL_SELECT_ID_INFO_BY_UUID = \
+    ("SELECT uuids.UUID AS uuid"
+     "       ,uuids_attributes.BASE_ID AS base_id"
+     "       ,uuids.ENTITY_TYPE AS type"
+     "       ,uuids.TIME_GENERATED AS time_generated"
+     "       ,uuids.USER_ID AS user_id"
+     "       ,uuids_attributes.SUBMISSION_ID AS submission_id"
+     "       ,uuids.USER_EMAIL AS email"
+     "       ,GROUP_CONCAT(ancestors.ancestor_uuid) AS ancestor_ids"
+     " FROM uuids"
+     "  INNER JOIN ancestors ON uuids.UUID = ancestors.DESCENDANT_UUID"
+     "  LEFT OUTER JOIN uuids_attributes ON uuids.UUID = uuids_attributes.UUID"
+     " WHERE uuids.UUID = %s"
+     )
+
+SQL_SELECT_ID_INFO_BY_BASE_ID = \
+    SQL_SELECT_ID_INFO_BY_UUID.replace(" WHERE uuids.UUID = %s"
+                                       , " WHERE uuids_attributes.BASE_ID = %s")
+SQL_SELECT_ID_INFO_BY_SUBMISSION_ID = \
+    SQL_SELECT_ID_INFO_BY_UUID.replace(" WHERE uuids.UUID = %s"
+                                       , " WHERE lower(uuids_attributes.SUBMISSION_ID) = %s")
+
+SQL_SELECT_ID_ROW_COUNT_BY_UUID = \
+    ("SELECT COUNT(*) AS row_count"
+     " FROM uuids"
+     " WHERE uuids.UUID = %s"
+     )
+
+SQL_SELECT_ID_ROW_COUNT_BY_BASE_ID = \
+    ("SELECT COUNT(*) AS row_count"
+     " FROM uuids_attributes"
+     " WHERE uuids_attributes.BASE_ID = %s"
+     )
+
+SQL_SELECT_ID_ROW_COUNT_BY_SUBMISSION_ID = \
+    SQL_SELECT_ID_ROW_COUNT_BY_BASE_ID.replace(" WHERE uuids_attributes.BASE_ID = %s"
+                                               , " WHERE uuids_attributes.SUBMISSION_ID = %s")
+
+SQL_SELECT_UUIDS_IN_LIST = \
+    ("SELECT UUID"
+     " FROM uuids"
+     " WHERE uuids.UUID IN (%s)"
+     )
+
+SQL_SELECT_BASE_IDS_IN_LIST = \
+    ("SELECT BASE_ID"
+     " FROM uuids_attributes"
+     " WHERE uuids_attributes.BASE_ID IN (%s)"
+     )
+
+SQL_SELECT_ANCESTOR_FOR_DESCENDANT_COUNT_UPDATE = \
+    ("SELECT uuids.ENTITY_TYPE AS entity_type"
+     "       ,uuids_attributes.DESCENDANT_COUNT as descendant_count"
+     "       ,uuids_attributes.SUBMISSION_ID as submission_id"
+     " FROM uuids"
+     "  INNER JOIN uuids_attributes ON uuids.UUID = uuids_attributes.UUID"
+     " WHERE uuids.UUID = %s"
+     )
+
+SQL_UPDATE_ANCESTOR_DESCENDANT_COUNT = \
+    ("UPDATE uuids_attributes"
+     " SET DESCENDANT_COUNT = %s"
+     " WHERE UUID = %s"
+     )
+
+SQL_SELECT_ORGAN_COUNT_BY_DONOR_AND_CODE = \
+    ("SELECT ORGAN_COUNT"
+     " FROM organs"
+     " WHERE DONOR_UUID = %s AND organ_code = %s"
+     )
+
+SQL_INSERT_ORGANS = \
+    ("INSERT INTO organs"
+     " (DONOR_UUID, ORGAN_CODE, ORGAN_COUNT)"
+     " VALUES"
+     " (%s, %s, %s)"
+     )
+
+SQL_UPDATE_ORGAN_COUNT = \
+    ("UPDATE organs"
+     " SET ORGAN_COUNT = %s"
+     " WHERE DONOR_UUID = %s AND ORGAN_CODE = %s"
+     )
+
+SQL_SELECT_PARENT_DATA_CENTERS = \
+    ("SELECT UUID"
+     "       ,DC_CODE"
+     " FROM data_centers"
+     " WHERE uuid = %s OR dc_uuid = %s"
+     )
+
+SQL_INSERT_LAB_WITH_TMC_PREFIX = \
+    ("INSERT INTO data_centers"
+     " (UUID, DC_UUID, DC_CODE)"
+     " VALUES"
+     " (%s, %s, %s)"
+     )
 
 def startsWithComponentPrefix(app_id):
     tidl = app_id.strip().lower()
@@ -65,6 +223,32 @@ def startsWithComponentPrefix(app_id):
         return True
     else:
         return False
+
+# Return a recognized value in DataIdType for the data designed to
+# be in a known database column
+def getDataColumnIdType(dbColumn):
+    column_name = dbColumn.strip().upper()
+    if column_name == 'SUBMISSION_ID':
+        return DataIdType.SUBMISSION_ID
+    elif column_name == 'BASE_ID':
+        return DataIdType.BASE_ID
+    elif column_name == 'UUID':
+        return DataIdType.UUID
+    return DataIdType.INVALID
+
+# Return the type of the identifier from the recognized values in DataIdType
+def getDataIdType(identifier):
+    if not isValidAppId(identifier):
+        return DataIdType.INVALID
+    if startsWithComponentPrefix(identifier):
+        return DataIdType.SUBMISSION_ID
+    tid = stripAppId(identifier)
+    if len(tid) == 10:
+        return DataIdType.BASE_ID
+    if len(tid) == 32:
+        return DataIdType.UUID
+    # Never get here, if isValidAppId() called at beginning
+    return DataIdType.INVALID
 
 
 def isValidAppId(app_id):
@@ -130,8 +314,8 @@ class UUIDWorker:
         r_val = {}
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute(
-                    "select uuid, dc_code from data_centers where uuid = '" + check_id + "' or dc_uuid = '" + check_id + "'")
+                curs.execute(SQL_SELECT_PARENT_DATA_CENTERS
+                             ,(check_id, check_id))
                 result = curs.fetchone()
                 if result is None:
                     try:
@@ -150,14 +334,19 @@ class UUIDWorker:
 
                     if not 'tmc_prefix' in lab:
                         return Response("Lab with specified id:" + check_id + " does not contain a tmc_prefix.", 400)
+                    # As of May 2022, know issue that code in the rest of this block is not reached.
+                    # The code above will return a message like:
+                    # "Lab with specified id:ttdst does not contain a tmc_prefix."
+                    # when TTDST is passed in from the client due to lower() being called on
+                    # the input, the Globus config JSON containing the name in uppercase, and
+                    # Python dictionaries being case sensitive.
 
                     uuid_json = self.newUUIDs([], "LAB", user_id, user_email, 1, gen_base_ids=False)
                     uuid_info = json.loads(uuid_json)
                     r_val['dc_code'] = lab['tmc_prefix']
                     r_val['uuid'] = uuid_info[0]['uuid']
-                    curs.execute(
-                        "insert into data_centers (uuid, DC_UUID, DC_CODE) VALUES ('" + r_val[
-                            'uuid'] + "','" + check_id + "','" + r_val['dc_code'] + "')")
+                    curs.execute(SQL_INSERT_LAB_WITH_TMC_PREFIX
+                                 , (check_id, check_id))
                     dbConn.commit()
                 else:
                     r_val['dc_code'] = result[1]
@@ -289,8 +478,8 @@ class UUIDWorker:
         parent_id = parent_id.strip().lower()
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute(
-                    "select entity_type, descendant_count, submission_id from uuids where uuid = '" + parent_id + "'")
+                curs.execute(SQL_SELECT_ANCESTOR_FOR_DESCENDANT_COUNT_UPDATE
+                             ,( parent_id, ) )  # N.B. comma to force creation of tuple with one value, rather than scalar
                 results = curs.fetchone()
                 anc_entity_type = results[0]
                 desc_count = results[1]
@@ -309,28 +498,11 @@ class UUIDWorker:
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
-                    curs.execute("update uuids set descendant_count = " + str(
-                        desc_count) + " where uuid = '" + parent_id + "'")
+                    curs.execute(SQL_UPDATE_ANCESTOR_DESCENDANT_COUNT
+                                 , (str(desc_count), parent_id))
                     dbConn.commit()
                     return r_val
-                # a source
-                if entity_type == 'SOURCE':
-                    if not anc_entity_type == 'LAB':
-                        return Response(
-                            "An id can't be created for a SOURCE because a DATA CENTER is required as the direct ancestor and an ancestor of type " + anc_entity_type + " found.",
-                            400)
-                    if isBlank(lab_code):
-                        return Response(
-                            "No data center code found data center with uuid:" + parent_id + ". Unable to generate an id for a DONOR.",
-                            400)
-                    r_val = []
-                    for _ in range(0, num_to_gen):
-                        desc_count = desc_count + 1
-                        r_val.append(lab_code.strip().upper() + padLeadingZeros(desc_count, 4))
-                    curs.execute("update uuids set descendant_count = " + str(
-                        desc_count) + " where uuid = '" + parent_id + "'")
-                    dbConn.commit()
-                    return r_val
+                # a SOURCE is only used in SenNet, and SenNet does not use SUBMISSION_ID
                 # an organ
                 elif entity_type == 'SAMPLE' and (anc_entity_type == 'DONOR' or anc_entity_type == 'SOURCE'):
                     if isBlank(organ_code):
@@ -338,12 +510,12 @@ class UUIDWorker:
                             "An id can't be created for a SAMPLE because the immediate ancestor is a DONOR and the SAMPLE was not supplied with an associated organ code (SAMPLE must be an organ to have a DONOR as a direct ancestor)",
                             400)
                     organ_code = organ_code.strip().upper()
-                    curs.execute(
-                        "select organ_count from organs where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+                    curs.execute(SQL_SELECT_ORGAN_COUNT_BY_DONOR_AND_CODE
+                                 , (parent_id, organ_code))
                     org_res = curs.fetchone()
                     if org_res is None:
-                        curs.execute(
-                            "insert into organs (DONOR_UUID, ORGAN_CODE, ORGAN_COUNT) VALUE ('" + parent_id + "', '" + organ_code + "', 0)")
+                        curs.execute(SQL_INSERT_ORGANS
+                                     , (parent_id, organ_code, 0))
                         dbConn.commit()
                         org_count = 0
                     else:
@@ -364,9 +536,8 @@ class UUIDWorker:
                         for _ in range(0, num_to_gen):
                             org_count = org_count + 1
                             r_val.append(anc_submission_id + "-" + organ_code + padLeadingZeros(org_count, 2))
-
-                    curs.execute("update organs set organ_count = " + str(
-                        org_count) + " where donor_uuid = '" + parent_id + "' and organ_code = '" + organ_code + "'")
+                    curs.execute(SQL_UPDATE_ORGAN_COUNT
+                                 , (str(org_count), parent_id, organ_code))
                     dbConn.commit()
                     return r_val
 
@@ -379,8 +550,8 @@ class UUIDWorker:
                     for _ in range(0, num_to_gen):
                         desc_count = desc_count + 1
                         r_val.append(anc_submission_id + "-" + str(desc_count))
-                    curs.execute("update uuids set descendant_count = " + str(
-                        desc_count) + " where uuid = '" + parent_id + "'")
+                    curs.execute(SQL_UPDATE_ANCESTOR_DESCENDANT_COUNT
+                                 , (str(desc_count), parent_id))
                     dbConn.commit()
                     return r_val
                 else:
@@ -406,8 +577,15 @@ class UUIDWorker:
             if entityType in SUBMISSION_ID_ENTITY_TYPES:
                 gen_submission_ids = True
 
+            # set a flag indicating if a UUID attributes row will be created for
+            # the UUID row that will be created.
+            # N.B. descendant_count is tied to gen_submission_ids i.e. will not need a
+            #      row to support descendant_count unless submission_id is populated.
+            insert_attributes_for_uuid = gen_base_ids or gen_submission_ids
+
             for i in range(0, nIds, MAX_GEN_IDS):
                 insertVals = []
+                insertAttribVals = []
                 file_info_insert_vals = []
                 insertParents = []
                 numToGen = min(MAX_GEN_IDS, nIds - i)
@@ -419,7 +597,6 @@ class UUIDWorker:
                 else:
                     app_base_ids = [None] * numToGen
 
-                count_increase_q = None
                 submission_ids = None
                 if gen_submission_ids:
                     submission_ids = self.__create_submission_ids(numToGen, parentIDs[0], entityType,
@@ -441,11 +618,16 @@ class UUIDWorker:
                     else:
                         ins_app_base_id = None
 
-                    if gen_submission_ids:
-                        thisId["submission_id"] = submission_ids[n]
-                        insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail, submission_ids[n])
-                    else:
-                        insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail)
+                    # if gen_submission_ids:
+                    #     thisId["submission_id"] = submission_ids[n]
+                    #     insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail, submission_ids[n])
+                    # else:
+                    #     insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail)
+
+                    # Only set the attributes tuple of committing attributes to the table besides the UUID
+                    insertVals.append((insUuid, entityType, now, userId, userEmail))
+                    if insert_attributes_for_uuid:
+                        insertAttribVals.append((insUuid, ins_app_base_id, submission_ids[n] if gen_submission_ids else None))
 
                     if store_file_info:
                         info_idx = i + n
@@ -464,24 +646,40 @@ class UUIDWorker:
                         thisId['file_path'] = file_path
 
                     returnIds.append(thisId)
-                    insertVals.append(insRow)
 
                     for parentId in parentIDs:
                         parRow = (insUuid, parentId)
                         insertParents.append(parRow)
 
                 with closing(self.hmdb.getDBConnection()) as dbConn:
-                    with closing(dbConn.cursor()) as curs:
-                        if gen_submission_ids:
-                            curs.executemany(INSERT_SQL_WITH_SUBMISSION_ID, insertVals)
-                            curs.execute(count_increase_q)
-                        else:
-                            curs.executemany(INSERT_SQL, insertVals)
-                        if store_file_info:
-                            curs.executemany(INSERT_FILE_INFO_SQL, file_info_insert_vals)
 
-                        curs.executemany(INSERT_ANCESTOR_SQL, insertParents)
-                    dbConn.commit()
+                    existing_autocommit_setting = dbConn.autocommit
+                    dbConn.autocommit = False
+
+                    try:
+                        with closing(dbConn.cursor()) as curs:
+                            # Count on DBAPI-compliant MySQL Connetor/Python to begin a transaction on the first
+                            # SQL statement and keep open until explicit commit() call to allow rollback(), so
+                            # uuid and uuid_attributes committed atomically.
+                            curs.executemany(SQL_INSERT_UUIDS
+                                             ,insertVals)
+                            if insertAttribVals:
+                                curs.executemany(SQL_INSERT_UUIDS_ATTRIBUTES_DEFAULT_DESC_COUNT
+                                                 ,insertAttribVals)
+
+                            if store_file_info:
+                                curs.executemany(SQL_INSERT_FILES, file_info_insert_vals)
+
+                            curs.executemany(SQL_INSERT_ANCESTORS, insertParents)
+                        dbConn.commit()
+                    except mysql.connector.errors.Error as dbErr:
+                        dbConn.rollback()
+                        self.logger.error("newUUIDs() database INSERT failure caused rollback: ", dbErr, ", nIds=", nIds, ", userId=", userId)
+
+                        raise dbErr
+                    finally:
+                        # restore the autocommit setting, even though closing it by going out of scope.
+                        dbConn.autocommit = existing_autocommit_setting
 
         return json.dumps(returnIds)
 
@@ -518,16 +716,34 @@ class UUIDWorker:
         return list(ids)
 
     def __findDupsInDB(self, dbColumn, idSet):
-        sql = "select " + dbColumn + " from uuids where " + dbColumn + " IN(" + listToCommaSeparated(idSet,
-                                                                                                     "'",
-                                                                                                     True) + ")"
+
+        # Determine the type of identifier expected in the column so
+        # the correct prepared statement can be used.
+        data_id_type = getDataColumnIdType(dbColumn)
+
+        # form a tuple containing one string with the identifiers passed in, with
+        # each element quoted as required by MySQL, to be used
+        # by parameter substitution in the prepared statement.
+        id_list = (listToCommaSeparated(    idSet,
+                                            "'",
+                                            True),) # N.B. comma to force creation of tuple with one value, rather than scalar
+
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
+                if data_id_type == DataIdType.BASE_ID:
+                    curs.execute(SQL_SELECT_BASE_IDS_IN_LIST
+                                 , id_list)
+                elif data_id_type == DataIdType.UUID:
+                    curs.execute(SQL_SELECT_UUIDS_IN_LIST
+                                 , id_list)
+                else:
+                    self.logger.error("Unable to retrieve identfiers when data_id_type=",data_id_type," dbColumn=",dbColumn,".")
+                    pass
                 dupes = curs.fetchall()
-
         return dupes
 
+    ''' 
+    Unused since updateUUIDs() disabled in Jan 2021
     # which items in idSet are not in the database
     def __findExclusionsInDB(self, dbColumn, idSet):
 
@@ -546,6 +762,7 @@ class UUIDWorker:
                 excluded = curs.fetchall()
 
         return excluded
+    '''
 
     def __display_app_id(self, base_id):
         new_id = APP_ID_PREFIX + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
@@ -599,7 +816,8 @@ class UUIDWorker:
                 else:
                     raise Exception("Unknown ancestor type for id:" + hmid)
 
-                if 'base_id' in record:
+                if 'base_id' in record and record[
+                    'base_id'] is not None:
                     if not record['base_id'].strip() == '':
                         record[APP_ID] = self.__display_app_id(record['base_id'])
                     record.pop('base_id', '')
@@ -611,22 +829,37 @@ class UUIDWorker:
     def getIdInfo(self, app_id):
         if not isValidAppId(app_id):
             return Response(app_id + " is not a valid id format", 400)
-        tidl = app_id.strip().lower()
-        tid = stripAppId(app_id)
-        if startsWithComponentPrefix(app_id):
-            # TODO: This query won't work for SenNet as it doesn't use submission_id
-            sql = "select " + UUID_SELECTS + " from uuids inner join ancestors on ancestors.descendant_uuid = uuids.uuid where lower(submission_id) ='" + tidl + "'"
-        elif len(tid) == 10:
-            sql = "select " + UUID_SELECTS + " from uuids inner join ancestors on ancestors.descendant_uuid = uuids.uuid where base_id ='" + tid + "'"
-        elif len(tid) == 32:
-            sql = "select " + UUID_SELECTS + " from uuids inner join ancestors on ancestors.descendant_uuid = uuids.uuid where uuid ='" + tid + "'"
-        else:
-            return Response("Invalid id (empty or bad length)", 400)
+
+        tidl = (app_id.strip().lower(),)  # N.B. comma to force creation of tuple with one value, rather than scalar
+        tid = (stripAppId(app_id),)  # N.B. comma to force creation of tuple with one value, rather than scalar
+
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
+                try:
+                    # execute() parameter substitution queries with a data tuple, each appropriate
+                    # for the type of identifier provided and return fields expected.
+                    data_id_type = getDataIdType(app_id)
+                    if data_id_type == DataIdType.SUBMISSION_ID:
+                        curs.execute(SQL_SELECT_ID_INFO_BY_SUBMISSION_ID
+                                     , tidl)
+                    elif data_id_type == DataIdType.BASE_ID:
+                        curs.execute(SQL_SELECT_ID_INFO_BY_BASE_ID
+                                     , tid)
+                    elif data_id_type == DataIdType.UUID:
+                        curs.execute(SQL_SELECT_ID_INFO_BY_UUID
+                                     , tid)
+                    else:
+                        self.logger.error("Unable to retrief identfier infomation when data_id_type=", data_id_type, " app_id=", app_id, ".")
+                        pass
+                except BaseException as err:
+                    self.logger.error("Unexpected database problem. err=",err,". Verify schema is current model.")
+                    raise
                 results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in
                            curs.fetchall()]
+                # remove the submission_id column if it is null
+                for item in results:
+                    if item['submission_id'] == None:
+                        item.pop('submission_id')
 
         # In Python, empty sequences (strings, lists, tuples) are false
         if results is None or not results:
@@ -643,22 +876,15 @@ class UUIDWorker:
         return json.dumps(rdict, indent=4, sort_keys=True, default=str)
 
     def getAncestors(self, app_id):
-        if not isValidAppId(app_id):
+        if not isValidAppId(app_id) or getDataIdType(app_id) != DataIdType.UUID:
             return Response(app_id + " is not a valid uuid", 400)
-        tid = stripAppId(app_id).lower()
-        if startsWithComponentPrefix(app_id):
-            return Response(app_id + " not a valid uuid.", 400)
-        elif len(tid) == 10:
-            return Response(app_id + " is not a valid uuid.", 400)
-        elif len(tid) == 32:
-            sql = "select ancestor_uuid from ancestors where descendant_uuid ='" + tid + "'"
-        else:
-            return Response("Invalid id (empty or bad length)", 400)
+        tid = (stripAppId(app_id).lower(),)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
         with closing(self.hmdb.getDBConnection()) as dbConn:
             results = []
             with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
+                curs.execute(SQL_SELECT_ANCESTORS_OF_DESCENDANT_UUID
+                             , tid)
                 for aid in curs.fetchall():
                     results.append(aid[0])
 
@@ -667,17 +893,21 @@ class UUIDWorker:
             return Response("Could not find the target id: " + app_id, 404)
         if isinstance(results, list) and (len(results) == 0):
             return Response("Could not find the target id or target id has no ancestors: " + app_id, 404)
+            # kbkbkb- shouldn't we just return [], as we do elsewhere, when no ancestors?
 
         return json.dumps(results, indent=4, sort_keys=True, default=str)
 
     def getFileIdInfo(self, fid):
-        check_id = fid.strip()
-        if isBlank(check_id) or len(check_id) != 32:
+        if not isValidAppId(fid) or getDataIdType(fid) != DataIdType.UUID:
+            # if isBlank(check_id) or len(check_id) != 32:
             return Response("Invalid file id format.  32 digit hex only.", 400)
-        sql = "select uuid, path, checksum, size, base_dir, ancestor_uuid from files inner join ancestors on ancestors.descendant_uuid = files.uuid where uuid = '" + check_id + "'"
+        # sql = "select uuid, path, checksum, size, base_dir, ancestor_uuid from files inner join ancestors on ancestors.descendant_uuid = files.uuid where uuid = '" + check_id + "'"
+        check_id = (fid.strip(),)  # N.B. comma to force creation of tuple with one value, rather than scalar
+
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
+                curs.execute(SQL_SELECT_FILES_INFO_INCLUDING_ANCESTOR
+                             , check_id)
                 results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in
                            curs.fetchall()]
 
@@ -690,7 +920,7 @@ class UUIDWorker:
         if results[0]['uuid'] is None:
             return Response("Could not find the target id: " + fid, 404)
 
-        rdict = self._convert_result_id_array(results, check_id)
+        rdict = self._convert_result_id_array(results, check_id[0])
         if 'checksum' in rdict and rdict['checksum'] is None: rdict.pop('checksum')
         if 'size' in rdict and rdict['size'] is None: rdict.pop('size')
 
@@ -700,7 +930,8 @@ class UUIDWorker:
     def uuid_exists(self, app_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from uuids where uuid = '" + app_id + "'")
+                curs.execute(SQL_SELECT_ID_ROW_COUNT_BY_UUID
+                             , (app_id,)) # N.B. comma to force creation of tuple with one value, rather than scalar
                 res = curs.fetchone()
 
         if (res is None or len(res) == 0): return False
@@ -708,31 +939,11 @@ class UUIDWorker:
         if (res[0] == 0): return False
         raise Exception("Multiple uuids found matching " + app_id)
 
-    #   def uuidsExist(self, uuids):
-    #       uuid_list = '('
-    #       first = True
-    #       comma = ''
-    #       for uuid in uuids:
-    #           uuid_list = uuid_list + comma + "'" + uuid.strip() + "'"
-    #           if first:
-    #               first = False
-    #               comma = ','
-    #       uuid_list = uuid_list + ')'
-    #
-    #       with closing(self.hmdb.getDBConnection()) as dbConn:
-    #           with closing(dbConn.cursor()) as curs:
-    #               curs.execute("select count(*) from hm_uuids where hm_uuid in " + uuid_list)
-    #               res = curs.fetchone()
-    #
-    #       if(res is None or len(res) == 0): return False
-    #       count = res[0]
-    #       if count != len(uuids): return False
-    #       return True
-
     def base_id_exists(self, base_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from uuids where base_id ='" + base_id + "'")
+                curs.execute(SQL_SELECT_ID_ROW_COUNT_BY_BASE_ID
+                             , (base_id,)) # N.B. comma to force creation of tuple with one value, rather than scalar
                 res = curs.fetchone()
         if (res is None or len(res) == 0): return False
         if (res[0] == 1): return True
@@ -743,7 +954,8 @@ class UUIDWorker:
     def submission_id_exists(self, hmid):
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute("select count(*) from uuids where submission_id = '" + hmid + "'")
+                curs.execute(SQL_SELECT_ID_ROW_COUNT_BY_SUBMISSION_ID
+                             , (hmid,)) # N.B. comma to force creation of tuple with one value, rather than scalar
                 res = curs.fetchone()
         if (res is None or len(res) == 0): return False
         if (res[0] == 1): return True
@@ -797,15 +1009,17 @@ class UUIDWorker:
         if not APP_UUID in info_d:
             return Response("Error: not corresponding UUID found for " + entity_id, 400)
 
-        entity_uuid = info_d[APP_UUID]
-
-        # query that finds all files associated with entity by joining the ancestors table (entity is the ancestor, files are the descendants) with the files table
-        sql = f"select * from files left join ancestors on ancestors.descendant_uuid = files.uuid where ancestors.ancestor_uuid = '{entity_uuid}';"
+        # entity_uuid = info_d[APP_UUID]
+        #kbkbkb-Is this APP_UUID the same piece of data found in app.cfg i.e. 'hm_uuid' or 'sn_uuid'???
+        entity_uuid = (info_d[APP_UUID],)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
         # run the query and morph results to an array of dict
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
+                # query that finds all files associated with entity by joining the ancestors table (entity is
+                # the ancestor, files are the descendants) with the files table
+                curs.execute(SQL_SELECT_FILES_DESCENDED_FROM_ANCESTOR_UUID
+                             , entity_uuid)
                 results = [dict((curs.description[i][0].lower(), value) for i, value in enumerate(row)) for row in
                            curs.fetchall()]
 
@@ -813,10 +1027,9 @@ class UUIDWorker:
         for item in results:
             item['file_uuid'] = item['uuid']
             item.pop('uuid')
-            item.pop('descendant_uuid')
+            # item.pop('descendant_uuid')
             item.pop('ancestor_uuid')
         return results
-
 
 ''' 
     def newUUID(self, parentID, entityType, userId, userEmail, submissionId=None):
@@ -838,7 +1051,8 @@ class UUIDWorker:
             if count == 100:
                 raise Exception("Unable to generate a unique hubmap id after 100 attempts")                 
             now = time.strftime('%Y-%m-%d %H:%M:%S')
-            sql = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID) VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
+            sql = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID)
+             VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
             vals = (uuid, hubmap_id, entityType, parentID, now, userId, userEmail, submissionId)
             with closing(self.hmdb.getDBConnection()) as dbConn:
                 with closing(dbConn.cursor()) as curs:

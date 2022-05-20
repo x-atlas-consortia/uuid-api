@@ -1,10 +1,25 @@
+###ONLY KEEP WHAT IS IN THIS COMMENT SO CHANGES ARE CHECKED-IN
+###Flask==1.1.2
+###
+#### Used by reload_from_neo4j
+###py2neo==2021.0.1
+###
+#### Higher version (even 8.0.23) would cause issue because
+#### we still use RDS with older 5.6.mysql_aurora
+###mysql-connector-python==8.0.16
+###
+#### The commons package requires requests>=2.22.0
+###requests==2.25.1
+###
+#### The branch name of commons to be used during image build
+#### Default is master branch specified in docker-compose.yml if not set
+###git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+
 Flask==1.1.2
 
 # Used by reload_from_neo4j
 py2neo==2021.0.1
 
-# Higher version (even 8.0.23) would cause issue because 
-# we still use RDS with older 5.6.mysql_aurora
 mysql-connector-python==8.0.16
 
 # The commons package requires requests>=2.22.0
@@ -12,4 +27,12 @@ requests==2.25.1
 
 # The branch name of commons to be used during image build
 # Default is master branch specified in docker-compose.yml if not set
-git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+###git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+hubmap-commons==2.0.13
+
+Jinja2==3.0.3
+itsdangerous==2.0.1
+Werkzeug==1.0.1
+cryptography==37.0.0
+
+
