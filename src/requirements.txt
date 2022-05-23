@@ -1,38 +1,35 @@
-###ONLY KEEP WHAT IS IN THIS COMMENT SO CHANGES ARE CHECKED-IN
-###Flask==1.1.2
-###
-#### Used by reload_from_neo4j
-###py2neo==2021.0.1
-###
-#### Higher version (even 8.0.23) would cause issue because
-#### we still use RDS with older 5.6.mysql_aurora
-###mysql-connector-python==8.0.16
-###
-#### The commons package requires requests>=2.22.0
-###requests==2.25.1
-###
-#### The branch name of commons to be used during image build
-#### Default is master branch specified in docker-compose.yml if not set
-###git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+# 5/23/2022
+# Note: we don't need this dependency. But due to the recent unit test error: 
+# ImportError: cannot import name 'json' from 'itsdangerous'
+# The recommended fix is to upgrade the Flask to latest version i.e, 2.0.3 or above
+# But we don't want to upgrade Flask in case it breaks the API
+# Add this itsdangerous dependency and downgrade to 2.0.1 as a temporary solution
+itsdangerous==2.0.1
 
+# 5/23/2022
+# Note: pin version of Jinja2 to 3.0.3 because escape function was removed from newer release 
+# but Flask v1.1.2 that we are using still depends on the older version
+Jinja2==3.0.3
+
+# 5/23/2022
+# Note: pin version of Werkzeug to 2.0.3 to avoid import error 
+# possibly caused by Python 3.9.7?
+Werkzeug==2.0.3
+
+#############################################################################################
+# Below are the regular dependencies
 Flask==1.1.2
 
-# Used by reload_from_neo4j
-py2neo==2021.0.1
-
-mysql-connector-python==8.0.16
+# To match the AWS RDS MySQL server 8.0.23
+mysql-connector-python==8.0.23
 
 # The commons package requires requests>=2.22.0
 requests==2.25.1
 
-# The branch name of commons to be used during image build
+# Use the published package from PyPI as default
+# Use the branch name of commons from github for testing new changes made in commons
 # Default is master branch specified in docker-compose.yml if not set
-###git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
-hubmap-commons==2.0.13
-
-Jinja2==3.0.3
-itsdangerous==2.0.1
-Werkzeug==1.0.1
-cryptography==37.0.0
+# git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+hubmap-commons==2.0.14
 
 
