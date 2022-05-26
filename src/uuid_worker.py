@@ -618,8 +618,8 @@ class UUIDWorker:
                     else:
                         ins_app_base_id = None
 
-                    # if gen_submission_ids:
-                    #     thisId["submission_id"] = submission_ids[n]
+                    if gen_submission_ids:
+                        thisId["submission_id"] = submission_ids[n]
                     #     insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail, submission_ids[n])
                     # else:
                     #     insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail)
