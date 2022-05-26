@@ -122,7 +122,7 @@ SQL_SELECT_ID_INFO_BY_UUID = \
      "       ,uuids.USER_EMAIL AS email"
      "       ,GROUP_CONCAT(ancestors.ancestor_uuid) AS ancestor_ids"
      " FROM uuids"
-     "  INNER JOIN ancestors ON uuids.UUID = ancestors.DESCENDANT_UUID"
+     "  LEFT OUTER JOIN ancestors ON uuids.UUID = ancestors.DESCENDANT_UUID"
      "  LEFT OUTER JOIN uuids_attributes ON uuids.UUID = uuids_attributes.UUID"
      " WHERE uuids.UUID = %s"
      )
@@ -849,7 +849,7 @@ class UUIDWorker:
                         curs.execute(SQL_SELECT_ID_INFO_BY_UUID
                                      , tid)
                     else:
-                        self.logger.error("Unable to retrief identfier infomation when data_id_type=", data_id_type, " app_id=", app_id, ".")
+                        self.logger.error("Unable to retrieve identfier information when data_id_type=", data_id_type, " app_id=", app_id, ".")
                         pass
                 except BaseException as err:
                     self.logger.error("Unexpected database problem. err=",err,". Verify schema is current model.")
@@ -860,6 +860,8 @@ class UUIDWorker:
                 for item in results:
                     if item['submission_id'] == None:
                         item.pop('submission_id')
+                    if item['ancestor_ids'] == None:
+                        item.pop('ancestor_ids')
 
         # In Python, empty sequences (strings, lists, tuples) are false
         if results is None or not results:
