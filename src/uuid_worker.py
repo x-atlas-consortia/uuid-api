@@ -658,7 +658,7 @@ class UUIDWorker:
 
                     try:
                         with closing(dbConn.cursor()) as curs:
-                            # Count on DBAPI-compliant MySQL Connetor/Python to begin a transaction on the first
+                            # Count on DBAPI-compliant MySQL Connector/Python to begin a transaction on the first
                             # SQL statement and keep open until explicit commit() call to allow rollback(), so
                             # uuid and uuid_attributes committed atomically.
                             curs.executemany(SQL_INSERT_UUIDS
@@ -858,9 +858,10 @@ class UUIDWorker:
                            curs.fetchall()]
                 # remove the submission_id column if it is null
                 for item in results:
-                    if item['submission_id'] == None:
+                    item['ancestor_ids'] = []
+                    if 'submission_id' in item and item['submission_id'] == None:
                         item.pop('submission_id')
-                    if item['ancestor_ids'] == None:
+                    if 'ancestor_ids' in item and (item['ancestor_ids'] == None or len(item['ancestor_ids']) == 0):
                         item.pop('ancestor_ids')
 
         # In Python, empty sequences (strings, lists, tuples) are false
