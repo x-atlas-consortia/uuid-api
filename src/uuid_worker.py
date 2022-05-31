@@ -122,7 +122,7 @@ SQL_SELECT_ID_INFO_BY_UUID = \
      "       ,uuids.USER_EMAIL AS email"
      "       ,GROUP_CONCAT(ancestors.ancestor_uuid) AS ancestor_ids"
      " FROM uuids"
-     "  INNER JOIN ancestors ON uuids.UUID = ancestors.DESCENDANT_UUID"
+     "  LEFT OUTER JOIN ancestors ON uuids.UUID = ancestors.DESCENDANT_UUID"
      "  LEFT OUTER JOIN uuids_attributes ON uuids.UUID = uuids_attributes.UUID"
      " WHERE uuids.UUID = %s"
      )
@@ -658,7 +658,7 @@ class UUIDWorker:
 
                     try:
                         with closing(dbConn.cursor()) as curs:
-                            # Count on DBAPI-compliant MySQL Connetor/Python to begin a transaction on the first
+                            # Count on DBAPI-compliant MySQL Connector/Python to begin a transaction on the first
                             # SQL statement and keep open until explicit commit() call to allow rollback(), so
                             # uuid and uuid_attributes committed atomically.
                             curs.executemany(SQL_INSERT_UUIDS
@@ -849,7 +849,7 @@ class UUIDWorker:
                         curs.execute(SQL_SELECT_ID_INFO_BY_UUID
                                      , tid)
                     else:
-                        self.logger.error("Unable to retrief identfier infomation when data_id_type=", data_id_type, " app_id=", app_id, ".")
+                        self.logger.error("Unable to retrieve identfier information when data_id_type=", data_id_type, " app_id=", app_id, ".")
                         pass
                 except BaseException as err:
                     self.logger.error("Unexpected database problem. err=",err,". Verify schema is current model.")
@@ -858,8 +858,11 @@ class UUIDWorker:
                            curs.fetchall()]
                 # remove the submission_id column if it is null
                 for item in results:
-                    if item['submission_id'] == None:
+                    item['ancestor_ids'] = []
+                    if 'submission_id' in item and item['submission_id'] == None:
                         item.pop('submission_id')
+                    if 'ancestor_ids' in item and (item['ancestor_ids'] == None or len(item['ancestor_ids']) == 0):
+                        item.pop('ancestor_ids')
 
         # In Python, empty sequences (strings, lists, tuples) are false
         if results is None or not results:
