@@ -858,7 +858,6 @@ class UUIDWorker:
                            curs.fetchall()]
                 # remove the submission_id column if it is null
                 for item in results:
-                    item['ancestor_ids'] = []
                     if 'submission_id' in item and item['submission_id'] == None:
                         item.pop('submission_id')
                     if 'ancestor_ids' in item and (item['ancestor_ids'] == None or len(item['ancestor_ids']) == 0):
