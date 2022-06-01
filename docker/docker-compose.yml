@@ -14,6 +14,11 @@ services:
     image: uuid-api:${UUID_API_VERSION:?err}
     hostname: uuid-api
     container_name: uuid-api
+    # Map host machine port 2222 to container port 8080
+    # Only root can listen on ports below 1024, we use higher-numbered ports
+    # since nginx is running under non-root user hubmap
+    ports:
+      - "2222:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080"]
       interval: 1m30s
