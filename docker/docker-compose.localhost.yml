@@ -3,6 +3,8 @@ version: "3.7"
 services:
   
   uuid-api:
+    ports:
+      - "2222:8080"
     volumes:
       # Mount the VERSION file and BUILD file
       - "../VERSION:/usr/src/app/VERSION"
@@ -10,20 +12,26 @@ services:
       # Mount the source code to container
       - "../src:/usr/src/app/src"
   
-  # # Only used by local development
-  # hubmap-mysql:
-  #   build: ./hubmap-mysql
-  #   # Build the image with name and tag
-  #   image: hubmap-mysql:1.1
-  #   hostname: hubmap-mysql
-  #   container_name: hubmap-mysql
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: 123
-  #   # Use the same port mapping for dev and prod
-  #   ports:
-  #     - "3306:3306"
-  #   networks:
-  #     - gateway_hubmap
-
+   # Only used by local development
+  bcrf-mysql:
+    platform: linux/x86_64
+    build: ./bcrf-mysql
+    # Build the image with name and tag
+    image: mysql:1.1
+    hostname: bcrf-mysql
+    container_name: bcrf-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: p@ssw0rd1
+     # Use the same port mapping for dev and prod
+    ports:
+      - "3306:3306"
+    networks:
+      - gateway_hubmap
+    volumes:
+      - mysql:/var/lib/mysql
+      - mysql_config:/etc/mysql
+volumes:
+  mysql:
+  mysql_config:
 
 
