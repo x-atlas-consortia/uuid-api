@@ -17,23 +17,6 @@ from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadi
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons import globus_groups
 
-app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
-            instance_relative_config=True)
-app.config.from_pyfile('app.cfg') #address with https://github.com/hubmapconsortium/uuid-api/issues/79, but coordinate with app.py in meantime.
-#app.config.from_pyfile('sennet.app.cfg')
-
-# These application specific IDs are used to generalize the uuid-api to allow it to work with specific instances of entity-api
-APP_ID_PREFIX = app.config['APP_ID_PREFIX']
-APP_ID = app.config['APP_ID']
-APP_UUID = app.config['APP_UUID']
-APP_BASE_ID = app.config['APP_BASE_ID']
-
-BASE_DIR_TYPES = app.config['BASE_DIR_TYPES']
-ID_ENTITY_TYPES = app.config['ID_ENTITY_TYPES']
-ANCESTOR_REQUIRED_ENTITY_TYPES = app.config['ANCESTOR_REQUIRED_ENTITY_TYPES']
-MULTIPLE_ALLOWED_ORGANS = app.config['MULTIPLE_ALLOWED_ORGANS']
-SUBMISSION_ID_ENTITY_TYPES = app.config['SUBMISSION_ID_ENTITY_TYPES']
-
 MAX_GEN_IDS = 200
 
 APPID_ALPHA_CHARS = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Z']
@@ -280,8 +263,50 @@ def stripAppId(app_id):
 class UUIDWorker:
     authHelper = None
 
-    def __init__(self, clientId, clientSecret, dbHost, dbName, dbUsername, dbPassword, globusGroups=None):
-        if clientId is None or clientSecret is None or isBlank(clientId) or isBlank(clientSecret):
+    def __init__(self, globusGroups=None, app_config=None):
+        global APP_ID_PREFIX
+        global APP_ID
+        global APP_UUID
+        global APP_BASE_ID
+        global BASE_DIR_TYPES
+        global ID_ENTITY_TYPES
+        global ANCESTOR_REQUIRED_ENTITY_TYPES
+        global MULTIPLE_ALLOWED_ORGANS
+        global SUBMISSION_ID_ENTITY_TYPES
+
+        self.logger = logging.getLogger('uuid.service')
+
+        if app_config is None:
+            raise Exception("Configuration data loaded by the app must be passed to the worker.")
+        try:
+            clientId = app_config['APP_CLIENT_ID']
+            clientSecret = app_config['APP_CLIENT_SECRET']
+            dbHost = app_config['DB_HOST']
+            dbName = app_config['DB_NAME']
+            dbUsername = app_config['DB_USERNAME']
+            dbPassword = app_config['DB_PASSWORD']
+
+            # These application specific IDs are used to generalize the uuid-api to allow it to work with specific instances of entity-api
+            APP_ID_PREFIX = app_config['APP_ID_PREFIX']
+            APP_ID = app_config['APP_ID']
+            APP_UUID = app_config['APP_UUID']
+            APP_BASE_ID = app_config['APP_BASE_ID']
+
+            BASE_DIR_TYPES = app_config['BASE_DIR_TYPES']
+            ID_ENTITY_TYPES = app_config['ID_ENTITY_TYPES']
+            ANCESTOR_REQUIRED_ENTITY_TYPES = app_config['ANCESTOR_REQUIRED_ENTITY_TYPES']
+            MULTIPLE_ALLOWED_ORGANS = app_config['MULTIPLE_ALLOWED_ORGANS']
+            SUBMISSION_ID_ENTITY_TYPES = app_config['SUBMISSION_ID_ENTITY_TYPES']
+
+            if not clientId:
+                raise Exception("Configuration parameter APP_CLIENT_ID not valid.")
+            if not clientSecret:
+                raise Exception("Configuration parameter APP_CLIENT_SECRET not valid.")
+        except KeyError as ke:
+            self.logger.error("Expected configuration failed to load %s from app_config=%s.",ke,app_config)
+            raise Exception("Expected configuration failed to load. See the logs.")
+
+        if not clientId  or not clientSecret:
             raise Exception("Globus client id and secret are required in AuthHelper")
 
         if not AuthHelper.isInitialized():
@@ -293,9 +318,6 @@ class UUIDWorker:
                 self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
         else:
             self.authHelper.instance()
-
-        # Open the config file
-        self.logger = logging.getLogger('uuid.service')
 
         self.dbHost = dbHost
         self.dbName = dbName
