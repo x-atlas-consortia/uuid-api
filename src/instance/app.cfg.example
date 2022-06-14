@@ -25,6 +25,6 @@ MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 # Only for HubMap, not SenNet
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
 
-#Set to True when you want to overwrite the globus group information. This requires 'globus-groups.json' to contain information
-#Set to False if you do not want to overwrite globus groups
-GLOBUS_GROUPS = False
+#Set with the name of a file in the instance directory for Flask to load, if you want to overwrite Globus group information.
+#Set to None if you do not want to overwrite Globus groups.
+GLOBUS_GROUPS_FILENAME = None
