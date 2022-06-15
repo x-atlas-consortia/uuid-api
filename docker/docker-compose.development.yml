@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   
-  search-api:
+  uuid-api:
     build: 
       context: ./uuid-api
       # Uncomment if tesitng against a specific branch of commons other than the PyPI package
