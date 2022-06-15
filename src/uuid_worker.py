@@ -273,6 +273,7 @@ class UUIDWorker:
         global ANCESTOR_REQUIRED_ENTITY_TYPES
         global MULTIPLE_ALLOWED_ORGANS
         global SUBMISSION_ID_ENTITY_TYPES
+        global ENTITY_TYPE_UUID_PREFIX
 
         self.logger = logging.getLogger('uuid.service')
 
@@ -297,6 +298,7 @@ class UUIDWorker:
             ANCESTOR_REQUIRED_ENTITY_TYPES = app_config['ANCESTOR_REQUIRED_ENTITY_TYPES']
             MULTIPLE_ALLOWED_ORGANS = app_config['MULTIPLE_ALLOWED_ORGANS']
             SUBMISSION_ID_ENTITY_TYPES = app_config['SUBMISSION_ID_ENTITY_TYPES']
+            ENTITY_TYPE_UUID_PREFIX = app_config['ENTITY_TYPE_UUID_PREFIX']
 
             if not clientId:
                 raise Exception("Configuration parameter APP_CLIENT_ID not valid.")
@@ -488,11 +490,26 @@ class UUIDWorker:
     def newUUIDTest(self, parentIds, entityType, userId, userEmail):
         return self.newUUIDs(parentIds, entityType, userId, userEmail)
 
-    def uuidGen(self):
+    # Generate random UUIDs, but with a fixed prefix when configured for
+    # the entity_type.
+    def v2UUIDGen(self,uuid_entity_type):
         hexVal = ""
-        for _ in range(32):
+        if uuid_entity_type == 'FILE':
+            hexVal = ENTITY_TYPE_UUID_PREFIX['FILE']
+
+        while len(hexVal) < 32:
             hexVal = hexVal + secrets.choice(HEX_CHARS)
-        hexVal = hexVal.lower()
+
+        # If we ended up with a UUID starting with the prefix for a FILE while trying to
+        # get a UUID for a non-FILE, loop until the prefix is acceptable.
+        while uuid_entity_type != 'FILE' and hexVal[:len(ENTITY_TYPE_UUID_PREFIX['FILE'])] == ENTITY_TYPE_UUID_PREFIX['FILE']:
+            prefixLength = len(ENTITY_TYPE_UUID_PREFIX['FILE'])
+            substitutePrefix = ""
+            while len(substitutePrefix) < prefixLength:
+                substitutePrefix = substitutePrefix + secrets.choice(HEX_CHARS)
+            hexVal = substitutePrefix + hexVal[prefixLength:]
+
+        hexVal = hexVal.lower() #KBKBKB-any reason we list them upper case, and the lower() what we build from them?
         return hexVal
 
     # Not used for SenNet
@@ -612,7 +629,7 @@ class UUIDWorker:
                 insertParents = []
                 numToGen = min(MAX_GEN_IDS, nIds - i)
                 # generate uuids
-                uuids = self.__nUniqueIds(numToGen, self.uuidGen, 'uuid', previousGeneratedIds=previousUUIDs)
+                uuids = self.__nUniqueIds(numToGen, lambda: self.v2UUIDGen(entityType), 'uuid', previousGeneratedIds=previousUUIDs)
                 if gen_base_ids:
                     app_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, 'base_id',
                                                      previousGeneratedIds=previous_app_ids)
@@ -704,9 +721,6 @@ class UUIDWorker:
                         dbConn.autocommit = existing_autocommit_setting
 
         return json.dumps(returnIds)
-
-    def nUniqueIds(self, nIds, idGenMethod, dbColumn):
-        return self.__nUniqueIds(nIds, idGenMethod, dbColumn)
 
     # generate unique ids
     # generates ids with provided id generation method and checks them against existing ids in the DB
