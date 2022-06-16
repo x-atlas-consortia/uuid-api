@@ -30,6 +30,9 @@ class DataIdType(Enum):
     BASE_ID = 'BASE_ID'
     SUBMISSION_ID = 'SUBMISSION_ID'
 
+class EntityTypeUUIDPrefix(Enum):
+    FILE = 'FFFF' # N.B. match the case used in the enumeration value with UUIDWorker.HEX_CHARS
+
 # Set up scalars with SQL strings matching the paramstyle of the database module, as
 # specified at https://peps.python.org/pep-0249
 #
@@ -488,10 +491,25 @@ class UUIDWorker:
     def newUUIDTest(self, parentIds, entityType, userId, userEmail):
         return self.newUUIDs(parentIds, entityType, userId, userEmail)
 
-    def uuidGen(self):
+    # Generate random UUIDs, but with a fixed prefix when configured for
+    # the entity_type.
+    def v2UUIDGen(self,uuid_entity_type):
         hexVal = ""
-        for _ in range(32):
+        if uuid_entity_type == 'FILE':
+            hexVal = EntityTypeUUIDPrefix.FILE.value
+
+        while len(hexVal) < 32:
             hexVal = hexVal + secrets.choice(HEX_CHARS)
+
+        # If we ended up with a UUID starting with the prefix for a FILE while trying to
+        # get a UUID for a non-FILE, loop until the prefix is acceptable.
+        while uuid_entity_type != 'FILE' and hexVal[:len(EntityTypeUUIDPrefix.FILE.value)] == EntityTypeUUIDPrefix.FILE.value:
+            prefixLength = len(EntityTypeUUIDPrefix.FILE.value)
+            substitutePrefix = ""
+            while len(substitutePrefix) < prefixLength:
+                substitutePrefix = substitutePrefix + secrets.choice(HEX_CHARS)
+            hexVal = substitutePrefix + hexVal[prefixLength:]
+
         hexVal = hexVal.lower()
         return hexVal
 
@@ -612,7 +630,7 @@ class UUIDWorker:
                 insertParents = []
                 numToGen = min(MAX_GEN_IDS, nIds - i)
                 # generate uuids
-                uuids = self.__nUniqueIds(numToGen, self.uuidGen, 'uuid', previousGeneratedIds=previousUUIDs)
+                uuids = self.__nUniqueIds(numToGen, lambda: self.v2UUIDGen(entityType), 'uuid', previousGeneratedIds=previousUUIDs)
                 if gen_base_ids:
                     app_base_ids = self.__nUniqueIds(numToGen, self.hmidGen, 'base_id',
                                                      previousGeneratedIds=previous_app_ids)
@@ -704,9 +722,6 @@ class UUIDWorker:
                         dbConn.autocommit = existing_autocommit_setting
 
         return json.dumps(returnIds)
-
-    def nUniqueIds(self, nIds, idGenMethod, dbColumn):
-        return self.__nUniqueIds(nIds, idGenMethod, dbColumn)
 
     # generate unique ids
     # generates ids with provided id generation method and checks them against existing ids in the DB
