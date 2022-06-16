@@ -25,10 +25,6 @@ MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 # Only for HubMap, not SenNet
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
 
-# Dictionary of prefixes to use when generating UUIDs for entity_types. N.B. match
-# the case used in the dictionary entry with UUIDWorker.HEX_CHARS
-ENTITY_TYPE_UUID_PREFIX = {'FILE':'FFFF'}
-
 #Set with the name of a file in the instance directory for Flask to load, if you want to overwrite Globus group information.
 #Set to None if you do not want to overwrite Globus groups.
 GLOBUS_GROUPS_FILENAME = None
