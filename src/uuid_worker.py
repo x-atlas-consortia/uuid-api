@@ -30,6 +30,9 @@ class DataIdType(Enum):
     BASE_ID = 'BASE_ID'
     SUBMISSION_ID = 'SUBMISSION_ID'
 
+class EntityTypeUUIDPrefix(Enum):
+    FILE = 'FFFF' # N.B. match the case used in the enumeration value with UUIDWorker.HEX_CHARS
+
 # Set up scalars with SQL strings matching the paramstyle of the database module, as
 # specified at https://peps.python.org/pep-0249
 #
@@ -273,7 +276,6 @@ class UUIDWorker:
         global ANCESTOR_REQUIRED_ENTITY_TYPES
         global MULTIPLE_ALLOWED_ORGANS
         global SUBMISSION_ID_ENTITY_TYPES
-        global ENTITY_TYPE_UUID_PREFIX
 
         self.logger = logging.getLogger('uuid.service')
 
@@ -298,7 +300,6 @@ class UUIDWorker:
             ANCESTOR_REQUIRED_ENTITY_TYPES = app_config['ANCESTOR_REQUIRED_ENTITY_TYPES']
             MULTIPLE_ALLOWED_ORGANS = app_config['MULTIPLE_ALLOWED_ORGANS']
             SUBMISSION_ID_ENTITY_TYPES = app_config['SUBMISSION_ID_ENTITY_TYPES']
-            ENTITY_TYPE_UUID_PREFIX = app_config['ENTITY_TYPE_UUID_PREFIX']
 
             if not clientId:
                 raise Exception("Configuration parameter APP_CLIENT_ID not valid.")
@@ -495,21 +496,21 @@ class UUIDWorker:
     def v2UUIDGen(self,uuid_entity_type):
         hexVal = ""
         if uuid_entity_type == 'FILE':
-            hexVal = ENTITY_TYPE_UUID_PREFIX['FILE']
+            hexVal = EntityTypeUUIDPrefix.FILE.value
 
         while len(hexVal) < 32:
             hexVal = hexVal + secrets.choice(HEX_CHARS)
 
         # If we ended up with a UUID starting with the prefix for a FILE while trying to
         # get a UUID for a non-FILE, loop until the prefix is acceptable.
-        while uuid_entity_type != 'FILE' and hexVal[:len(ENTITY_TYPE_UUID_PREFIX['FILE'])] == ENTITY_TYPE_UUID_PREFIX['FILE']:
-            prefixLength = len(ENTITY_TYPE_UUID_PREFIX['FILE'])
+        while uuid_entity_type != 'FILE' and hexVal[:len(EntityTypeUUIDPrefix.FILE.value)] == EntityTypeUUIDPrefix.FILE.value:
+            prefixLength = len(EntityTypeUUIDPrefix.FILE.value)
             substitutePrefix = ""
             while len(substitutePrefix) < prefixLength:
                 substitutePrefix = substitutePrefix + secrets.choice(HEX_CHARS)
             hexVal = substitutePrefix + hexVal[prefixLength:]
 
-        hexVal = hexVal.lower() #KBKBKB-any reason we list them upper case, and the lower() what we build from them?
+        hexVal = hexVal.lower()
         return hexVal
 
     # Not used for SenNet
