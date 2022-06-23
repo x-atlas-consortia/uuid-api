@@ -338,7 +338,7 @@ class UUIDWorker:
         check_id = lab_id.strip().lower()
         r_val = {}
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_PARENT_DATA_CENTERS
                              ,(check_id, check_id))
                 result = curs.fetchone()
@@ -517,7 +517,7 @@ class UUIDWorker:
     def __create_submission_ids(self, num_to_gen, parent_id, entity_type, organ_code=None, lab_code=None):
         parent_id = parent_id.strip().lower()
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_ANCESTOR_FOR_DESCENDANT_COUNT_UPDATE
                              ,( parent_id, ) )  # N.B. comma to force creation of tuple with one value, rather than scalar
                 results = curs.fetchone()
@@ -697,7 +697,7 @@ class UUIDWorker:
                     dbConn.autocommit = False
 
                     try:
-                        with closing(dbConn.cursor()) as curs:
+                        with closing(dbConn.cursor(prepared=True)) as curs:
                             # Count on DBAPI-compliant MySQL Connector/Python to begin a transaction on the first
                             # SQL statement and keep open until explicit commit() call to allow rollback(), so
                             # uuid and uuid_attributes committed atomically.
@@ -766,7 +766,7 @@ class UUIDWorker:
                                             True),) # N.B. comma to force creation of tuple with one value, rather than scalar
 
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 if data_id_type == DataIdType.BASE_ID:
                     curs.execute(SQL_SELECT_BASE_IDS_IN_LIST
                                  , id_list)
@@ -871,7 +871,7 @@ class UUIDWorker:
         tid = (stripAppId(app_id),)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 try:
                     # execute() parameter substitution queries with a data tuple, each appropriate
                     # for the type of identifier provided and return fields expected.
@@ -921,7 +921,7 @@ class UUIDWorker:
 
         with closing(self.hmdb.getDBConnection()) as dbConn:
             results = []
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_ANCESTORS_OF_DESCENDANT_UUID
                              , tid)
                 for aid in curs.fetchall():
@@ -944,7 +944,7 @@ class UUIDWorker:
         check_id = (fid.strip(),)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_FILES_INFO_INCLUDING_ANCESTOR
                              , check_id)
                 results = [dict((curs.description[i][0], value) for i, value in enumerate(row)) for row in
@@ -968,7 +968,7 @@ class UUIDWorker:
 
     def uuid_exists(self, app_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_ID_ROW_COUNT_BY_UUID
                              , (app_id,)) # N.B. comma to force creation of tuple with one value, rather than scalar
                 res = curs.fetchone()
@@ -980,7 +980,7 @@ class UUIDWorker:
 
     def base_id_exists(self, base_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_ID_ROW_COUNT_BY_BASE_ID
                              , (base_id,)) # N.B. comma to force creation of tuple with one value, rather than scalar
                 res = curs.fetchone()
@@ -992,7 +992,7 @@ class UUIDWorker:
     # Only used for HubMap
     def submission_id_exists(self, hmid):
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 curs.execute(SQL_SELECT_ID_ROW_COUNT_BY_SUBMISSION_ID
                              , (hmid,)) # N.B. comma to force creation of tuple with one value, rather than scalar
                 res = curs.fetchone()
@@ -1010,7 +1010,7 @@ class UUIDWorker:
         try:
             res = None
             with closing(self.hmdb.getDBConnection()) as dbConn:
-                with closing(dbConn.cursor()) as curs:
+                with closing(dbConn.cursor(prepared=True)) as curs:
                     curs.execute("select 'ANYTHING'")
                     res = curs.fetchone()
 
@@ -1054,7 +1054,7 @@ class UUIDWorker:
 
         # run the query and morph results to an array of dict
         with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
+            with closing(dbConn.cursor(prepared=True)) as curs:
                 # query that finds all files associated with entity by joining the ancestors table (entity is
                 # the ancestor, files are the descendants) with the files table
                 curs.execute(SQL_SELECT_FILES_DESCENDED_FROM_ANCESTOR_UUID
