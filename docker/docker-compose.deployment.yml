@@ -1,0 +1,9 @@
+version: "3.7"
+
+services:
+  
+  uuid-api: 
+    # Use the published image and tag from DockerHub
+    image: hubmap/uuid-api:${UUID_API_VERSION:?err}
+
+

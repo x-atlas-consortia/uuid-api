@@ -15,13 +15,17 @@ from hubmap_commons.string_helper import isBlank
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
             instance_relative_config=True)
-app.config.from_pyfile('app.cfg')
+
+# Use configuration from instance/app.cfg, deployed per-app from examples in the repository.
+try:
+    app.config.from_pyfile('app.cfg')
+except Exception as e:
+    raise Exception("Failed to get configuration from instance/app.cfg")
 
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log"
 logger = None
 worker = None
 secure_group = app.config['SECURE_GROUP']
-
 
 @app.before_first_request
 def init():
@@ -38,31 +42,19 @@ def init():
         print("Error opening log file during startup")
         print(str(e))
 
-    if app.config['GLOBUS_GROUPS'] is True:
+    if app.config['GLOBUS_GROUPS_FILENAME']:
+        logger.info("Overriding Globus groups with contents of GLOBUS_GROUPS_FILENAME=%s.",app.config['GLOBUS_GROUPS_FILENAME'])
         try:
-            with open('./instance/globus-groups.json') as jsonFile:
+            with open(os.path.join(app.instance_path, app.config['GLOBUS_GROUPS_FILENAME'])) as jsonFile:
                 globus_groups = json.load(jsonFile)
         except Exception as e:
-            logger.error(e, exc_info=True)
+            logger.critical(e, exc_info=True)
     else:
         globus_groups = None
 
     try:
-        if 'APP_CLIENT_ID' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
-            raise Exception("Required configuration parameter APP_CLIENT_ID not found in application configuration.")
-        if 'APP_CLIENT_SECRET' not in app.config or isBlank(app.config['APP_CLIENT_ID']):
-            raise Exception(
-                "Required configuration parameter APP_CLIENT_SECRET not found in application configuration.")
-        cId = app.config['APP_CLIENT_ID']
-        cSecret = app.config['APP_CLIENT_SECRET']
-        dbHost = app.config['DB_HOST']
-        dbName = app.config['DB_NAME']
-        dbUsername = app.config['DB_USERNAME']
-        dbPassword = app.config['DB_PASSWORD']
-        worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername,
-                            dbPassword=dbPassword, globusGroups=globus_groups)
+        worker = UUIDWorker(globusGroups=globus_groups, app_config=app.config)
         logger.info("initialized")
-
     except Exception as e:
         print("Error during startup.")
         print(str(e))
