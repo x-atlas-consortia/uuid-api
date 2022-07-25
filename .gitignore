@@ -36,3 +36,7 @@ log/*
 !log/README.md
 
 .idea/
+
+env
+lib
+bin

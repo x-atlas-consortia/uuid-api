@@ -8,4 +8,4 @@ Dockerfile
 README.md
 
 # Ignore the flask instance folder
-src/instance
+#src/instance

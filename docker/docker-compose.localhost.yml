@@ -4,7 +4,9 @@ services:
   
   uuid-api:
     ports:
-      - "2222:8080"
+      - "2222:2222"
+    links:
+      - bcrf-mysql
     volumes:
       # Mount the VERSION file and BUILD file
       - "../VERSION:/usr/src/app/VERSION"
@@ -22,16 +24,17 @@ services:
     container_name: bcrf-mysql
     environment:
       MYSQL_ROOT_PASSWORD: p@ssw0rd1
+      MYSQL_USER: uuid-user
+      MYSQL_PASSWORD: St1nkyF33t
+      MYSQL_DATABASE: bcrf_uuid
      # Use the same port mapping for dev and prod
     ports:
       - "3306:3306"
     networks:
-      - gateway_hubmap
+      - elastic
     volumes:
-      - mysql:/var/lib/mysql
-      - mysql_config:/etc/mysql
+      - bcrf-mysql:/var/lib/mysql
+      - bcrf-mysql-config:/etc/mysql
 volumes:
-  mysql:
-  mysql_config:
-
-
+  bcrf-mysql:
+  bcrf-mysql-config:

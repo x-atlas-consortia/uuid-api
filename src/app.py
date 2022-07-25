@@ -1,11 +1,7 @@
-import sys
-import os
 from pathlib import Path
-import time
-import logging
 from uuid_worker import UUIDWorker
-import json
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, Blueprint
+import json, logging, time, os
 
 # HuBMAP commons
 # from hm_auth import secured
@@ -16,11 +12,15 @@ from hubmap_commons.string_helper import isBlank
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
             instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
+api_gateway_blueprint = Blueprint('uuid', __name__)
 
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log"
-logger = None
 worker = None
 secure_group = app.config['SECURE_GROUP']
+
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
+                    level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 
 @app.before_first_request
@@ -29,8 +29,7 @@ def init():
     global worker
     global globus_groups
     try:
-        logger = logging.getLogger('uuid.service')
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         logFH = logging.FileHandler(LOG_FILE_NAME)
         logger.addHandler(logFH)
         logger.info("started")
@@ -55,6 +54,8 @@ def init():
                 "Required configuration parameter APP_CLIENT_SECRET not found in application configuration.")
         cId = app.config['APP_CLIENT_ID']
         cSecret = app.config['APP_CLIENT_SECRET']
+        # For fargate
+        # cSecret = os.environ['APP_CLIENT_SECRET']
         dbHost = app.config['DB_HOST']
         dbName = app.config['DB_NAME']
         dbUsername = app.config['DB_USERNAME']
@@ -62,7 +63,6 @@ def init():
         worker = UUIDWorker(clientId=cId, clientSecret=cSecret, dbHost=dbHost, dbName=dbName, dbUsername=dbUsername,
                             dbPassword=dbPassword, globusGroups=globus_groups)
         logger.info("initialized")
-
     except Exception as e:
         print("Error during startup.")
         print(str(e))
@@ -72,7 +72,12 @@ def init():
 
 @app.route('/', methods=['GET'])
 def index():
-    return "Hello! This is the UUID API service :)"
+    return json.dumps("Hello! This is the UUID API service :)")
+
+
+@api_gateway_blueprint.route('/', methods=['GET'])
+def healtcheck():
+    return json.dumps("Hello! This is the UUID API service :)")
 
 
 # Status of MySQL connection
@@ -142,9 +147,10 @@ POST arguments in json
 
 
 # Add backwards compatibility for older version of entity-api
-@app.route('/hmuuid', methods=["POST"])
+@api_gateway_blueprint.route('/hmuuid', methods=["POST"])
+@api_gateway_blueprint.route('/uuid', methods=["POST"])
 @app.route('/uuid', methods=["POST"])
-@secured(groups=secure_group)
+# @secured(groups=secure_group)
 def add_uuid():
     global worker
     global logger
@@ -170,9 +176,10 @@ def add_uuid():
         return (Response("Unexpected error: " + eMsg, 500))
 
 
-@app.route('/hmuuid/<uuid>', methods=["GET"])
+@api_gateway_blueprint.route('/hmuuid/<uuid>', methods=["GET"])
+@api_gateway_blueprint.route('/uuid/<uuid>', methods=["GET"])
 @app.route('/uuid/<uuid>', methods=["GET"])
-@secured(groups=secure_group)
+# @secured(groups=secure_group)
 def get_uuid(uuid):
     global worker
     global logger
@@ -316,6 +323,9 @@ def get_file_info(entity_id):
         logger.error(e, exc_info=True)
         return (Response("Unexpected error: " + eMsg, 500))
 
+
+api_gateway_prefix = '/uuid-api'
+app.register_blueprint(api_gateway_blueprint, url_prefix=api_gateway_prefix)
 
 if __name__ == "__main__":
     try:

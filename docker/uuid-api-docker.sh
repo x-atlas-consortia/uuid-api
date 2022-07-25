@@ -97,7 +97,7 @@ else
 
             # Only mount the VERSION file and BUILD file for localhost and dev
             # On test/stage/prod, copy the VERSION file and BUILD file to image
-            if [[ "$1" != "localhost" && "$1" != "dev" ]]; then
+#            if [[ "$1" != "localhost" && "$1" != "dev" ]]; then
                 # Delete old VERSION and BUILD files if found
                 if [ -f "uuid-api/VERSION" ]; then
                     rm -rf uuid-api/VERSION
@@ -110,7 +110,7 @@ else
                 # Copy over the BUILD and VERSION files
                 cp ../VERSION uuid-api
                 cp ../BUILD uuid-api
-            fi
+#            fi
 
             docker-compose -f docker-compose.yml -f docker-compose.$1.yml -p uuid-api build
         elif [ "$2" = "start" ]; then

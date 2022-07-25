@@ -12,19 +12,20 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
 -- Schema mydb
 -- -----------------------------------------------------
 -- -----------------------------------------------------
--- Schema hm_uuid
+-- Schema bcrf_uuid
 -- -----------------------------------------------------
 
 -- -----------------------------------------------------
--- Schema hm_uuid
+-- Schema bcrf_uuid
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `hm_uuid` DEFAULT CHARACTER SET ascii ;
-USE `hm_uuid` ;
+USE `bcrf_uuid` ;
+CREATE SCHEMA IF NOT EXISTS `bcrf_uuid` DEFAULT CHARACTER SET ascii ;
+GRANT ALL ON `bcrf_uuid`.* TO `uuid-user`@`%`;
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`uuids`
+-- Table `bcrf_uuid`.`uuids`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`uuids` (
+CREATE TABLE IF NOT EXISTS `bcrf_uuid`.`uuids` (
   `UUID` CHAR(32) NOT NULL,
   `ENTITY_TYPE` VARCHAR(20) NOT NULL,
   `TIME_GENERATED` TIMESTAMP NOT NULL,
@@ -37,9 +38,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`ancestors`
+-- Table `bcrf_uuid`.`ancestors`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`ancestors` (
+CREATE TABLE IF NOT EXISTS `bcrf_uuid`.`ancestors` (
   `ANCESTOR_UUID` CHAR(32) NOT NULL,
   `DESCENDANT_UUID` CHAR(32) NOT NULL,
   UNIQUE INDEX `UNQ_ANC_DEC_UUID` (`ANCESTOR_UUID` ASC, `DESCENDANT_UUID` ASC) VISIBLE,
@@ -47,12 +48,12 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`ancestors` (
   INDEX `IDX_DEC_UUID` (`DESCENDANT_UUID` ASC) VISIBLE,
   CONSTRAINT `ancestors_ibfk_1`
     FOREIGN KEY (`ANCESTOR_UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `bcrf_uuid`.`uuids` (`UUID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
   CONSTRAINT `ancestors_ibfk_2`
     FOREIGN KEY (`DESCENDANT_UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `bcrf_uuid`.`uuids` (`UUID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB
@@ -61,9 +62,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`data_centers`
+-- Table `bcrf_uuid`.`data_centers`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`data_centers` (
+CREATE TABLE IF NOT EXISTS `bcrf_uuid`.`data_centers` (
   `UUID` CHAR(32) NOT NULL,
   `DC_UUID` VARCHAR(40) NOT NULL,
   `DC_CODE` VARCHAR(8) NOT NULL,
@@ -73,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`data_centers` (
   INDEX `IDX_DC_All` (`UUID` ASC, `DC_UUID` ASC, `DC_CODE` ASC) VISIBLE,
   CONSTRAINT `data_centers_ibfk_1`
     FOREIGN KEY (`UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `bcrf_uuid`.`uuids` (`UUID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB
@@ -82,9 +83,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`files`
+-- Table `bcrf_uuid`.`files`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`files` (
+CREATE TABLE IF NOT EXISTS `bcrf_uuid`.`files` (
   `UUID` CHAR(32) NOT NULL,
   `BASE_DIR` VARCHAR(50) NOT NULL,
   `PATH` MEDIUMTEXT NULL DEFAULT NULL,
@@ -93,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`files` (
   PRIMARY KEY (`UUID`),
   CONSTRAINT `files_ibfk_1`
     FOREIGN KEY (`UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `bcrf_uuid`.`uuids` (`UUID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB
@@ -102,16 +103,16 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`organs`
+-- Table `bcrf_uuid`.`organs`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`organs` (
+CREATE TABLE IF NOT EXISTS `bcrf_uuid`.`organs` (
   `DONOR_UUID` CHAR(32) NOT NULL,
   `ORGAN_CODE` VARCHAR(8) NOT NULL,
   `ORGAN_COUNT` INT NOT NULL DEFAULT '0',
   INDEX `IDX_ORGAN_CODE` (`ORGAN_CODE` ASC) VISIBLE,
   CONSTRAINT `organs_ibfk_1`
     FOREIGN KEY (`DONOR_UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `bcrf_uuid`.`uuids` (`UUID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB
@@ -120,9 +121,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`uuids_attributes`
+-- Table `bcrf_uuid`.`uuids_attributes`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`uuids_attributes` (
+CREATE TABLE IF NOT EXISTS `bcrf_uuid`.`uuids_attributes` (
   `UUID` CHAR(32) NOT NULL,
   `BASE_ID` VARCHAR(10) NULL DEFAULT NULL,
   `SUBMISSION_ID` VARCHAR(170) NULL DEFAULT NULL,
@@ -132,7 +133,7 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`uuids_attributes` (
   UNIQUE INDEX `UNQ_HUBMAP_BASE_ID` (`BASE_ID` ASC) VISIBLE,
   CONSTRAINT `uuids_attributes_ibfk_1`
     FOREIGN KEY (`UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `bcrf_uuid`.`uuids` (`UUID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB

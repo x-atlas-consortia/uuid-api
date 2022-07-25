@@ -7,7 +7,7 @@ services:
     # Only root can listen on ports below 1024, we use higher-numbered ports
     # since nginx is running under non-root user hubmap
     ports:
-      - "2222:8080"
+      - "2222:2222"
     volumes:
       # Mount the VERSION file and BUILD file
       - "../VERSION:/usr/src/app/VERSION"

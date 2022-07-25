@@ -15,14 +15,13 @@ services:
     hostname: uuid-api
     container_name: uuid-api
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080"]
-      interval: 1m30s
+      test: ["CMD", "curl", "--fail", "http://localhost:2222"]
+      interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    environment:
-      - HOST_GID=${HOST_GID:-1000}
-      - HOST_UID=${HOST_UID:-1000}
+    env_file:
+      - .env
     init: true
     restart: always
     volumes:
@@ -31,11 +30,11 @@ services:
       # Mount the logging to container
       - "../log:/usr/src/app/log"
       # Mount conf.d on host machine to the nginx conf.d on container
-      - "./uuid-api/nginx/conf.d:/etc/nginx/conf.d"
+#      - "./uuid-api/nginx/conf.d:/etc/nginx/conf.d"
     networks:
-      - gateway_hubmap
+      - elastic
 
 networks:
   # This is the network created by gateway to enable communicaton between multiple docker-compose projects
-  gateway_hubmap:
+  elastic:
     external: true

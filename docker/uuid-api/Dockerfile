@@ -12,6 +12,10 @@ WORKDIR /usr/src/app
 
 # Copy from host to image
 COPY . .
+# Support for BCRF AWS Fargate deploy
+COPY nginx/conf.d/uuid-api.conf /etc/nginx/conf.d/uuid-api.conf
+COPY VERSION /usr/src/app/VERSION
+COPY BUILD /usr/src/app/BUILD
 
 # Nginx package from EPEL is old, we create a new repository file to install the latest mainline version of Nginx
 RUN echo $'[nginx-mainline]\n\
@@ -38,7 +42,10 @@ RUN yum install -y nginx && \
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime. 
 # EXPOSE does not make the ports of the container accessible to the host.
 # Here 5000 is for the uwsgi socket, 8080 for nginx
-EXPOSE 5000 8080
+EXPOSE 5000 2222
+
+# Support for BCRF AWS Fargate deploy
+VOLUME ["/usr/src/app/log", "/usr/src/app/src/instance"]
 
 # Set an entrypoint
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
