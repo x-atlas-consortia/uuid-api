@@ -10,6 +10,7 @@ from contextlib import closing
 import json
 from app_db import DBConn
 import copy
+import re
 
 # HuBMAP commons
 # from hm_auth import AuthHelper
@@ -672,7 +673,11 @@ class UUIDWorker:
                     if store_file_info:
                         info_idx = i + n
                         file_path = file_info_array[info_idx]['path']
-                        # replace any <uuid> tags in the file path with the generated uuid
+                        # Replace any <uuid> tags in the file path with the generated uuid.
+                        # Keep the absolute file path intact after substituting in the file UUID for,
+                        # return to ingest-api, as needed for file system clean operations.  But only the
+                        # relative path of after the <uuid> marker will be stored in the database on files.PATH.
+                        relative_file_path = re.sub(r'^.+/<uuid>/',r'',file_path)
                         file_path = file_path.replace('<uuid>', insUuid)
                         file_checksum = None
                         file_size = None
@@ -680,7 +685,7 @@ class UUIDWorker:
                             file_checksum = file_info_array[info_idx]['checksum']
                         if 'size' in file_info_array[info_idx]:
                             file_size = file_info_array[info_idx]['size']
-                        file_info_ins_row = (insUuid, file_path, file_checksum, file_size, base_dir_type)
+                        file_info_ins_row = (insUuid, relative_file_path, file_checksum, file_size, base_dir_type)
                         # file_info_ins_row = (insUuid, file_path, file_checksum)
                         file_info_insert_vals.append(file_info_ins_row)
                         thisId['file_path'] = file_path
