@@ -1056,7 +1056,7 @@ class UUIDWorker:
                            curs.fetchall()]
 
         results_json = json.dumps(results)
-        if len(results_json) < self.large_response_threshold:
+        if len(results_json.encode('utf-8')) < self.large_response_threshold:
             return Response(response=results_json, mimetype="application/json")
         else:
             anS3Worker = None
