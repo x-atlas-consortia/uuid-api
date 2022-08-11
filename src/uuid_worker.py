@@ -12,6 +12,8 @@ from app_db import DBConn
 import copy
 import re
 
+from S3_worker import S3Worker
+
 # HuBMAP commons
 # from hm_auth import AuthHelper
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
@@ -76,12 +78,11 @@ SQL_SELECT_ANCESTORS_OF_DESCENDANT_UUID = \
      )
 
 SQL_SELECT_FILES_DESCENDED_FROM_ANCESTOR_UUID = \
-    ("SELECT UUID AS uuid"
+    ("SELECT UUID AS file_uuid"
      "       ,PATH AS path"
      "       ,CHECKSUM AS checksum"
      "       ,SIZE AS size"
      "       ,BASE_DIR AS base_dir"
-     "       ,ANCESTOR_UUID AS ancestor_uuid"
      " FROM files"
      "  INNER JOIN ancestors ON ancestors.DESCENDANT_UUID = files.UUID"
      " WHERE ancestors.ANCESTOR_UUID = %s"
@@ -301,6 +302,18 @@ class UUIDWorker:
             ANCESTOR_REQUIRED_ENTITY_TYPES = app_config['ANCESTOR_REQUIRED_ENTITY_TYPES']
             MULTIPLE_ALLOWED_ORGANS = app_config['MULTIPLE_ALLOWED_ORGANS']
             SUBMISSION_ID_ENTITY_TYPES = app_config['SUBMISSION_ID_ENTITY_TYPES']
+
+            self.aws_access_key_id = app_config['AWS_ACCESS_KEY_ID']
+            self.aws_secret_access_key = app_config['AWS_SECRET_ACCESS_KEY']
+            self.aws_s3_bucket_name = app_config['AWS_S3_BUCKET_NAME']
+            self.aws_object_url_expiration_in_secs = app_config['AWS_OBJECT_URL_EXPIRATION_IN_SECS']
+
+            if 'LARGE_RESPONSE_THRESHOLD' not in app_config or int(app_config['LARGE_RESPONSE_THRESHOLD'] > 9999999):
+                self.logger.error("LARGE_RESPONSE_THRESHOLD missing from app.cfg or too big for AWS Gateway. Defaulting to smaller value.")
+                self.large_response_threshold = 5000000
+            else:
+                self.large_response_threshold = int(app_config['LARGE_RESPONSE_THRESHOLD'])
+                self.logger.info(f"large_response_threshold set to {self.large_response_threshold}.")
 
             if not clientId:
                 raise Exception("Configuration parameter APP_CLIENT_ID not valid.")
@@ -784,28 +797,6 @@ class UUIDWorker:
                 dupes = curs.fetchall()
         return dupes
 
-    ''' 
-    Unused since updateUUIDs() disabled in Jan 2021
-    # which items in idSet are not in the database
-    def __findExclusionsInDB(self, dbColumn, idSet):
-
-        sql = "select " + dbColumn + " from ( "
-        first = True
-        for ex_id in idSet:
-            if first:
-                first = False
-            else:
-                sql = sql + " UNION ALL "
-            sql = sql + "(select '" + ex_id + "' as " + dbColumn + ")"
-        sql = sql + ") as list left join uuids using (" + dbColumn + ") where uuids." + dbColumn + " is null"
-        with closing(self.hmdb.getDBConnection()) as dbConn:
-            with closing(dbConn.cursor()) as curs:
-                curs.execute(sql)
-                excluded = curs.fetchall()
-
-        return excluded
-    '''
-
     def __display_app_id(self, base_id):
         new_id = APP_ID_PREFIX + base_id[0:3] + '.' + base_id[3:7] + '.' + base_id[7:]
         return new_id
@@ -937,7 +928,6 @@ class UUIDWorker:
             return Response("Could not find the target id: " + app_id, 404)
         if isinstance(results, list) and (len(results) == 0):
             return Response("Could not find the target id or target id has no ancestors: " + app_id, 404)
-            # kbkbkb- shouldn't we just return [], as we do elsewhere, when no ancestors?
 
         return json.dumps(results, indent=4, sort_keys=True, default=str)
 
@@ -1053,8 +1043,6 @@ class UUIDWorker:
         if not APP_UUID in info_d:
             return Response("Error: not corresponding UUID found for " + entity_id, 400)
 
-        # entity_uuid = info_d[APP_UUID]
-        #kbkbkb-Is this APP_UUID the same piece of data found in app.cfg i.e. 'hm_uuid' or 'sn_uuid'???
         entity_uuid = (info_d[APP_UUID],)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
         # run the query and morph results to an array of dict
@@ -1067,56 +1055,25 @@ class UUIDWorker:
                 results = [dict((curs.description[i][0].lower(), value) for i, value in enumerate(row)) for row in
                            curs.fetchall()]
 
-        # remove unneeded result columns and change the name of base_id to file_uuid
-        for item in results:
-            item['file_uuid'] = item['uuid']
-            item.pop('uuid')
-            # item.pop('descendant_uuid')
-            item.pop('ancestor_uuid')
-        return results
-
-''' 
-    def newUUID(self, parentID, entityType, userId, userEmail, submissionId=None):
-        uuid = self.uuidGen() #uuid.uuid4().hex
-        hubmap_id = self.hmidGen()
-
-        with self.lock:
-            count = 0
-            while(self.uuidExists(uuid) and count < 100):
-                uuid = self.uuidGen() #uuid.uuid4().hex
-                count = count + 1
-            if count == 100:
-                raise Exception("Unable to generate a unique uuid after 100 attempts")
-
-            count = 0;
-            while(self.doiExists(hubmap_id) and count < 100):
-                hubmap_id = self.hmidGen()
-                count = count + 1
-            if count == 100:
-                raise Exception("Unable to generate a unique hubmap id after 100 attempts")                 
-            now = time.strftime('%Y-%m-%d %H:%M:%S')
-            sql = "INSERT INTO hm_uuids (HMUUID, DOI_SUFFIX, ENTITY_TYPE, PARENT_UUID, TIME_GENERATED, USER_ID, USER_EMAIL, HUBMAP_ID)
-             VALUES (%s, %s, %s, %s, %s, %s,%s, %s)"
-            vals = (uuid, hubmap_id, entityType, parentID, now, userId, userEmail, submissionId)
-            with closing(self.hmdb.getDBConnection()) as dbConn:
-                with closing(dbConn.cursor()) as curs:
-                    curs.execute(sql, vals)
-                dbConn.commit()
-
-        disp_hubmap_id = self.__displayDoi(hubmap_id)
-        if submissionId is None:
-            rVal = {
-                "displayDoi": disp_hubmap_id,
-                "doi": hubmap_id,
-                "uuid": uuid
-                }
+        results_json = json.dumps(results)
+        if len(results_json.encode('utf-8')) < self.large_response_threshold:
+            return Response(response=results_json, mimetype="application/json")
         else:
-            rVal = {
-                "displayDoi": disp_hubmap_id,
-                "doi": hubmap_id,
-                "uuid": uuid,
-                "hubmapId": submissionId
-                }               
-        return rVal
+            anS3Worker = None
+            try:
+                anS3Worker = S3Worker(self.aws_access_key_id, self.aws_secret_access_key, self.aws_s3_bucket_name, self.aws_object_url_expiration_in_secs)
+                self.logger.info("anS3Worker initialized")
+            except Exception as e:
+                self.logger.error(f"Error getting anS3Worker to handle len(results)={len(results)}.")
+                self.logger.error(e, exc_info=True)
+                return Response(f"Unexpected error: {str(e)}", 500)
 
-'''
+            try:
+                # return anS3Worker.do_whatever_with_S3()
+                obj_key = anS3Worker.stash_text_as_object(results_json, entity_uuid[0])
+                aws_presigned_url = anS3Worker.create_URL_for_object(obj_key)
+                return Response(aws_presigned_url, 303)
+            except Exception as e:
+                self.logger.error(f"Error getting presigned URL for obj_key={obj_key}.")
+                self.logger.error(e, exc_info=True)
+                return Response(f"Unexpected error: {str(e)}", 500)
