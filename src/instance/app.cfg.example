@@ -24,9 +24,7 @@ DB_PASSWORD = '123'
 APP_ID_PREFIX = 'HBM'
 #Set to the ID used in the entity-api
 APP_ID = 'hubmap_id'
-APP_UUID = 'hm_uuid'
-APP_BASE_ID = 'hubmap_base_id'
-SECURE_GROUP = 'HuBMAP-read'
+APP_BASE_ID = 'base_id'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']

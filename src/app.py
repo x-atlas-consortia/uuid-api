@@ -1,4 +1,3 @@
-import sys
 import os
 from pathlib import Path
 import time
@@ -25,13 +24,11 @@ except Exception as e:
 LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log"
 logger = None
 worker = None
-secure_group = app.config['SECURE_GROUP']
 
 @app.before_first_request
 def init():
     global logger
     global worker
-    global globus_groups
     try:
         logger = logging.getLogger('uuid.service')
         logger.setLevel(logging.INFO)
@@ -42,18 +39,8 @@ def init():
         print("Error opening log file during startup")
         print(str(e))
 
-    if app.config['GLOBUS_GROUPS_FILENAME']:
-        logger.info("Overriding Globus groups with contents of GLOBUS_GROUPS_FILENAME=%s.",app.config['GLOBUS_GROUPS_FILENAME'])
-        try:
-            with open(os.path.join(app.instance_path, app.config['GLOBUS_GROUPS_FILENAME'])) as jsonFile:
-                globus_groups = json.load(jsonFile)
-        except Exception as e:
-            logger.critical(e, exc_info=True)
-    else:
-        globus_groups = None
-
     try:
-        worker = UUIDWorker(globusGroups=globus_groups, app_config=app.config)
+        worker = UUIDWorker(app_config=app.config)
         logger.info("initialized")
     except Exception as e:
         print("Error during startup.")
@@ -136,7 +123,7 @@ POST arguments in json
 # Add backwards compatibility for older version of entity-api
 @app.route('/hmuuid', methods=["POST"])
 @app.route('/uuid', methods=["POST"])
-@secured(groups=secure_group)
+@secured(has_write=True)
 def add_uuid():
     global worker
     global logger
@@ -164,7 +151,7 @@ def add_uuid():
 
 @app.route('/hmuuid/<uuid>', methods=["GET"])
 @app.route('/uuid/<uuid>', methods=["GET"])
-@secured(groups=secure_group)
+@secured(has_read=True)
 def get_uuid(uuid):
     global worker
     global logger
@@ -189,7 +176,7 @@ def get_uuid(uuid):
 
 @app.route('/hmuuid/<uuid>/exists', methods=["GET"])
 @app.route('/uuid/<uuid>/exists', methods=["GET"])
-@secured(groups=secure_group)
+@secured(has_read=True)
 def is_uuid(uuid):
     global worker
     global logger
@@ -208,7 +195,7 @@ def is_uuid(uuid):
 
 
 @app.route('/file-id/<file_uuid>', methods=["GET"])
-@secured(groups=secure_group)
+@secured(has_read=True)
 def get_file_id(file_uuid):
     global worker
     global logger
@@ -223,7 +210,7 @@ def get_file_id(file_uuid):
 
 
 @app.route('/<uuid>/ancestors', methods=["GET"])
-@secured(groups=secure_group)
+@secured(has_read=True)
 def get_ancestors(uuid):
     global worker
     global logger
@@ -295,7 +282,7 @@ def get_ancestors(uuid):
 #        ]
 
 @app.route('/<entity_id>/files', methods=["GET"])
-@secured(groups=secure_group)
+@secured(has_read=True)
 def get_file_info(entity_id):
     global worker
     global logger
