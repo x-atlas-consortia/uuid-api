@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   description: 'The UUID API is a restful web service used to create and query UUIDs used across HuBMAP.'
-  version: 2.0.6
+  version: 2.3.0
   title: HuBMAP UUID API
   contact:
     name: HuBMAP Help Desk

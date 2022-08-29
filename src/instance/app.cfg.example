@@ -2,22 +2,11 @@
 APP_CLIENT_ID = ''
 APP_CLIENT_SECRET = ''
 
-# AWS credentials for access such as S3 and presigned URLs
-# https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
-AWS_ACCESS_KEY_ID = ''
-AWS_SECRET_ACCESS_KEY = ''
-AWS_S3_BUCKET_NAME = ''
-AWS_OBJECT_URL_EXPIRATION_IN_SECS = 60*60 # 1 hour
-# Large response threshold, as determined by len() for the character set, above
-# which responses will be stashed in an S3 bucket and a pre-signed URL
-# returned in the response to avoid the AWS Gateway 10Mb constraint
-LARGE_RESPONSE_THRESHOLD = 9*(2**20)
-
 # MySQL connection (default value used for docker dev environment)
 # Point to remote MySQL for testing and production deployment
-DB_HOST = 'hubmap-mysql'
+DB_HOST = 'hubmap-mysql-clister'
 DB_NAME = 'hm_uuid'
-DB_USERNAME = 'root'
+DB_USERNAME = 'uuid_user'
 DB_PASSWORD = '123'
 
 #Set to either 'SNT' or 'HBM' depending on which application it should work with
@@ -34,6 +23,13 @@ MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 # Only for HubMap, not SenNet
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
 
-#Set with the name of a file in the instance directory for Flask to load, if you want to overwrite Globus group information.
-#Set to None if you do not want to overwrite Globus groups.
-GLOBUS_GROUPS_FILENAME = None
+# AWS credentials for access such as S3 and presigned URLs
+# https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+AWS_S3_BUCKET_NAME = ''
+AWS_OBJECT_URL_EXPIRATION_IN_SECS = 60*60 # 1 hour
+# Large response threshold, as determined by len() for the character set, above
+# which responses will be stashed in an S3 bucket and a pre-signed URL
+# returned in the response to avoid the AWS Gateway 10Mb constraint
+LARGE_RESPONSE_THRESHOLD = 9*(2**20)
