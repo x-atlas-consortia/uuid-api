@@ -1,8 +1,7 @@
-import os
 import logging
 
 import mysql.connector.errors
-from flask import Flask, Response
+from flask import Response
 import threading
 import secrets
 import time
@@ -18,7 +17,6 @@ from S3_worker import S3Worker
 # from hm_auth import AuthHelper
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
-from hubmap_commons import globus_groups
 
 MAX_GEN_IDS = 200
 
@@ -268,10 +266,10 @@ def stripAppId(app_id):
 class UUIDWorker:
     authHelper = None
 
-    def __init__(self, globusGroups=None, app_config=None):
+    def __init__(self, app_config=None):
         global APP_ID_PREFIX
         global APP_ID
-        global APP_UUID
+        #global APP_UUID
         global APP_BASE_ID
         global BASE_DIR_TYPES
         global ID_ENTITY_TYPES
@@ -294,7 +292,7 @@ class UUIDWorker:
             # These application specific IDs are used to generalize the uuid-api to allow it to work with specific instances of entity-api
             APP_ID_PREFIX = app_config['APP_ID_PREFIX']
             APP_ID = app_config['APP_ID']
-            APP_UUID = app_config['APP_UUID']
+            #APP_UUID = app_config['APP_UUID']
             APP_BASE_ID = app_config['APP_BASE_ID']
 
             BASE_DIR_TYPES = app_config['BASE_DIR_TYPES']
@@ -327,14 +325,9 @@ class UUIDWorker:
             raise Exception("Globus client id and secret are required in AuthHelper")
 
         if not AuthHelper.isInitialized():
-            # Depending on the version of the AuthHelper, the globusGroups variable might not be support
-            try:
-                self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret,
-                                                    globusGroups=globusGroups)
-            except TypeError:
-                self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
+            self.authHelper = AuthHelper.create(clientId=clientId, clientSecret=clientSecret)
         else:
-            self.authHelper.instance()
+            self.authHelper = AuthHelper.instance()
 
         self.dbHost = dbHost
         self.dbName = dbName
@@ -362,7 +355,7 @@ class UUIDWorker:
                         # lab = self.prov_helper.get_group_by_identifier(check_id)
 
                         # Get the globus groups info based on the groups json file in commons package
-                        globus_groups_info = globus_groups.get_globus_groups_info()
+                        globus_groups_info = self.authHelper.get_globus_groups_info()
                         groups_by_tmc_prefix_dict = globus_groups_info['by_tmc_prefix']
                         if not check_id in groups_by_tmc_prefix_dict:
                             lab = {}
@@ -661,7 +654,8 @@ class UUIDWorker:
                 for n in range(0, numToGen):
                     insUuid = uuids[n]
                     previousUUIDs.add(insUuid)
-                    thisId = {"uuid": insUuid}
+                    #add a copy of the uuid in a field called 'hm_uuid'- this is needed to support older HuBMAP applications
+                    thisId = {"uuid": insUuid, 'hm_uuid': insUuid}
 
                     if gen_base_ids:
                         ins_app_base_id = app_base_ids[n]
@@ -996,10 +990,11 @@ class UUIDWorker:
         if (res[0] == 0): return False
         raise Exception("Multiple HuBMAP IDs found matching " + hmid)
 
-    def modify_app_specific_uuid(self, dict):
-        dict[APP_UUID] = dict['uuid']
-        del dict['uuid']
-        return dict
+    def modify_app_specific_uuid(self, uuid_info):
+        #add hm_uuid record with uuid as the value
+        #to support older hubmap stuff that looks for this 
+        uuid_info['hm_uuid'] = uuid_info['uuid']
+        return uuid_info
 
     def testConnection(self):
         try:
@@ -1040,10 +1035,10 @@ class UUIDWorker:
         # convert to dict
         info_d = json.loads(info)
 
-        if not APP_UUID in info_d:
-            return Response("Error: not corresponding UUID found for " + entity_id, 400)
+        #if not APP_UUID in info_d:
+        #    return Response("Error: not corresponding UUID found for " + entity_id, 400)
 
-        entity_uuid = (info_d[APP_UUID],)  # N.B. comma to force creation of tuple with one value, rather than scalar
+        entity_uuid = (info_d['uuid'],)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
         # run the query and morph results to an array of dict
         with closing(self.hmdb.getDBConnection()) as dbConn:

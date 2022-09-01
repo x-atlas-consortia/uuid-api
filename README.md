@@ -51,7 +51,7 @@ cd docker
 ## Docker build for deployment on TEST/STAGE/PROD
 
 ```
-cd docker
+cd hubmap-docker
 export ENTITY_API_VERSION=a.b.c (replace with the actual released version number)
 ./docker-deployment.sh [start|stop|down]
 ```
