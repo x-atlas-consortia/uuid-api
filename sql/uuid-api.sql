@@ -12,15 +12,9 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
 -- -----------------------------------------------------
 
 -- -----------------------------------------------------
--- Schema hm_uuid
+-- Table `uuids`
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `hm_uuid` DEFAULT CHARACTER SET ascii ;
-USE `hm_uuid` ;
-
--- -----------------------------------------------------
--- Table `hm_uuid`.`uuids`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`uuids` (
+CREATE TABLE IF NOT EXISTS `uuids` (
   `UUID` CHAR(32) NOT NULL,
   `ENTITY_TYPE` VARCHAR(20) NOT NULL,
   `TIME_GENERATED` TIMESTAMP NOT NULL,
@@ -33,9 +27,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`ancestors`
+-- Table `ancestors`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`ancestors` (
+CREATE TABLE IF NOT EXISTS `ancestors` (
   `ANCESTOR_UUID` CHAR(32) NOT NULL,
   `DESCENDANT_UUID` CHAR(32) NOT NULL,
   INDEX `IDX_ANC_UUID` (`ANCESTOR_UUID` ASC) VISIBLE,
@@ -43,12 +37,12 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`ancestors` (
   UNIQUE INDEX `UNQ_ANC_DEC_UUID` (`ANCESTOR_UUID` ASC, `DESCENDANT_UUID` ASC) VISIBLE,
   CONSTRAINT `ancestors_ibfk_1`
     FOREIGN KEY (`ANCESTOR_UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `uuids` (`UUID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `ancestors_ibfk_2`
     FOREIGN KEY (`DESCENDANT_UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `uuids` (`UUID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -57,9 +51,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`data_centers`
+-- Table `data_centers`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`data_centers` (
+CREATE TABLE IF NOT EXISTS `data_centers` (
   `UUID` CHAR(32) NOT NULL,
   `DC_UUID` VARCHAR(40) NOT NULL,
   `DC_CODE` VARCHAR(8) NOT NULL,
@@ -69,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`data_centers` (
   INDEX `IDX_DC_All` (`UUID` ASC, `DC_UUID` ASC, `DC_CODE` ASC) VISIBLE,
   CONSTRAINT `data_centers_ibfk_1`
     FOREIGN KEY (`UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `uuids` (`UUID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -78,9 +72,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`files`
+-- Table `files`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`files` (
+CREATE TABLE IF NOT EXISTS `files` (
   `UUID` CHAR(32) NOT NULL,
   `BASE_DIR` VARCHAR(50) NOT NULL,
   `PATH` MEDIUMTEXT NULL DEFAULT NULL,
@@ -89,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`files` (
   PRIMARY KEY (`UUID`),
   CONSTRAINT `files_ibfk_1`
     FOREIGN KEY (`UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `uuids` (`UUID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -98,16 +92,16 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`organs`
+-- Table `organs`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`organs` (
+CREATE TABLE IF NOT EXISTS `organs` (
   `DONOR_UUID` CHAR(32) NOT NULL,
   `ORGAN_CODE` VARCHAR(8) NOT NULL,
   `ORGAN_COUNT` INT NOT NULL DEFAULT '0',
   INDEX `IDX_ORGAN_CODE` (`ORGAN_CODE` ASC) VISIBLE,
   CONSTRAINT `organs_ibfk_1`
     FOREIGN KEY (`DONOR_UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `uuids` (`UUID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -116,9 +110,9 @@ COLLATE = utf8mb4_0900_ai_ci;
 
 
 -- -----------------------------------------------------
--- Table `hm_uuid`.`uuids_attributes`
+-- Table `uuids_attributes`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `hm_uuid`.`uuids_attributes` (
+CREATE TABLE IF NOT EXISTS `uuids_attributes` (
   `UUID` CHAR(32) NOT NULL,
   `BASE_ID` VARCHAR(10) NULL DEFAULT NULL,
   `SUBMISSION_ID` VARCHAR(170) NULL DEFAULT NULL,
@@ -128,7 +122,7 @@ CREATE TABLE IF NOT EXISTS `hm_uuid`.`uuids_attributes` (
   UNIQUE INDEX `UNQ_BASE_ID` (`BASE_ID` ASC) VISIBLE,
   CONSTRAINT `uuids_attributes_ibfk_1`
     FOREIGN KEY (`UUID`)
-    REFERENCES `hm_uuid`.`uuids` (`UUID`)
+    REFERENCES `uuids` (`UUID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
