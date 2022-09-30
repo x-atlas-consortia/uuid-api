@@ -8,7 +8,7 @@ services:
       # Uncomment if tesitng against a specific branch of commons other than the PyPI package
       # Will also need to use the 'git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons'
       # in src/requirements.txt accordingly
-      # args:
+      args:
         # The commons github branch to be used during image build (default to master if not set or null)
         - COMMONS_BRANCH=${COMMONS_BRANCH:-main}
     # Build the image with name and tag
