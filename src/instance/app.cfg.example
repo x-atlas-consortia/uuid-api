@@ -2,6 +2,27 @@
 APP_CLIENT_ID = ''
 APP_CLIENT_SECRET = ''
 
+# MySQL connection (default value used for docker dev environment)
+# Point to remote MySQL for testing and production deployment
+DB_HOST = 'hubmap-mysql-clister'
+DB_NAME = 'hm_uuid'
+DB_USERNAME = 'uuid_user'
+DB_PASSWORD = '123'
+
+#Set to either 'SNT' or 'HBM' depending on which application it should work with
+APP_ID_PREFIX = 'HBM'
+#Set to the ID used in the entity-api
+APP_ID = 'hubmap_id'
+APP_BASE_ID = 'base_id'
+
+BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
+ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'UPLOAD']
+MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
+
+# Only for HubMap, not SenNet
+SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
+
 # AWS credentials for access such as S3 and presigned URLs
 # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
 AWS_ACCESS_KEY_ID = ''
@@ -12,30 +33,3 @@ AWS_OBJECT_URL_EXPIRATION_IN_SECS = 60*60 # 1 hour
 # which responses will be stashed in an S3 bucket and a pre-signed URL
 # returned in the response to avoid the AWS Gateway 10Mb constraint
 LARGE_RESPONSE_THRESHOLD = 9*(2**20)
-
-# MySQL connection (default value used for docker dev environment)
-# Point to remote MySQL for testing and production deployment
-DB_HOST = 'hubmap-mysql'
-DB_NAME = 'hm_uuid'
-DB_USERNAME = 'root'
-DB_PASSWORD = '123'
-
-#Set to either 'SNT' or 'HBM' depending on which application it should work with
-APP_ID_PREFIX = 'HBM'
-#Set to the ID used in the entity-api
-APP_ID = 'hubmap_id'
-APP_UUID = 'hm_uuid'
-APP_BASE_ID = 'hubmap_base_id'
-SECURE_GROUP = 'HuBMAP-read'
-
-BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
-ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
-ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'UPLOAD']
-MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
-
-# Only for HubMap, not SenNet
-SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
-
-#Set with the name of a file in the instance directory for Flask to load, if you want to overwrite Globus group information.
-#Set to None if you do not want to overwrite Globus groups.
-GLOBUS_GROUPS_FILENAME = None
