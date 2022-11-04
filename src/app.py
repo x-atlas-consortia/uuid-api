@@ -30,8 +30,8 @@ def init():
     global globus_groups
     try:
         logger.setLevel(logging.DEBUG)
-        logFH = logging.FileHandler(LOG_FILE_NAME)
-        logger.addHandler(logFH)
+        # logFH = logging.FileHandler(LOG_FILE_NAME)
+        # logger.addHandler(logFH)
         logger.info("started")
     except Exception as e:
         print("Error opening log file during startup")
