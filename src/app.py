@@ -70,17 +70,14 @@ def init():
         print("Check the log file for further information: " + LOG_FILE_NAME)
 
 
+@api_gateway_blueprint.route('/', methods=['GET'])
 @app.route('/', methods=['GET'])
 def index():
     return json.dumps("Hello! This is the UUID API service :)")
 
 
-@api_gateway_blueprint.route('/', methods=['GET'])
-def healtcheck():
-    return json.dumps("Hello! This is the UUID API service :)")
-
-
 # Status of MySQL connection
+@api_gateway_blueprint.route('/status', methods=['GET'])
 @app.route('/status', methods=['GET'])
 def status():
     global worker
