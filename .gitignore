@@ -22,6 +22,9 @@ sennet-docker/uuid-api/VERSION
 sennet-docker/uuid-api/src
 sennet-docker/uuid-api/log
 
+# Ignore backup files created by MySQL Workbench
+sql/*.bak
+
 # Ignore __pycache__ directories in any path
 **/__pycache__
 

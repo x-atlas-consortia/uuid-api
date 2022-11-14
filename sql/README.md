@@ -36,11 +36,15 @@ and uncheck the following option on the same screen
 ````
 Generate USE statements
 ````
-Click "Next", and provide the password when prompted.  On the "Select Objects" screen, only check
+Click "Next", and provide the password when prompted.  On the "Select Objects" screen, check
 ````
 Export MySQL Table Objects
 ````
-Click "Next".  Examine the generated SQL script to assure it is independent of the database it is being executed in. Use the buttons or clipboard to save this file as `uuid-api.ddl`.
+and
+````
+Export MySQL Routine Objects
+````
+Click "Next".  Examine the generated SQL script to assure it is independent of the database it is being executed in. Use the buttons or clipboard to save this file as `uuid-api.sql`.
 
 Click "Cancel" to abandon the rest of the "forward engineer" process.
 
