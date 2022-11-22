@@ -151,7 +151,6 @@ def add_uuid():
 
 @app.route('/hmuuid/<uuid>', methods=["GET"])
 @app.route('/uuid/<uuid>', methods=["GET"])
-@secured(has_read=True)
 def get_uuid(uuid):
     global worker
     global logger
