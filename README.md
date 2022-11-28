@@ -48,7 +48,7 @@ cd docker
 ./docker-development.sh [check|config|build|start|stop|down]
 ```
 
-## Docker build for deployment on TEST/STAGE/PROD
+## Docker build for deployment on PROD
 
 ```
 cd hubmap-docker
@@ -56,13 +56,6 @@ cd hubmap-docker
 ```
 
 ## Development process
-
-### To release via TEST infrastructure
-- Make new feature or bug fix branches from `main` branch (the default branch)
-- Make PRs to `main`
-- As a codeowner, Zhou (github username `yuanzhou`) is automatically assigned as a reviewer to each PR. When all other reviewers have approved, he will approve as well, merge to TEST infrastructure, and redeploy the TEST instance.
-- Developer or someone on the team who is familiar with the change will test/qa the change
-- When any current changes in the `main` have been approved after test/qa on TEST, Zhou will release to PROD using the same docker image that has been tested on TEST infrastructure.
 
 ### To work on features in the development environment before ready for testing and releasing
 - Make new feature branches off the `main` branch
@@ -73,4 +66,4 @@ cd hubmap-docker
 
 ### Updating API Documentation
 
-The documentation for the API calls is hosted on SmartAPI. Modifying the `uuid-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents. The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
+The documentation for the API calls is hosted on SmartAPI. Modifying the `files-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents. The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
