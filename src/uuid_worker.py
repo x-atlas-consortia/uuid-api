@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import logging
 
 import mysql.connector.errors
@@ -611,7 +612,9 @@ class UUIDWorker:
         # if entityType == 'DONOR':
         gen_base_ids = entityType in ID_ENTITY_TYPES
         returnIds = []
-        now = time.strftime('%Y-%m-%d %H:%M:%S')
+        # See admonition at https://docs.python.org/3/library/datetime.html#datetime.datetime.utcnow to
+        # retrieve a non-naive UTC time.
+        awareUTCTimeNow = datetime.now(timezone.utc)
         store_file_info = False
         if entityType == 'FILE':
             store_file_info = True
@@ -673,7 +676,7 @@ class UUIDWorker:
                     #     insRow = (insUuid, ins_app_base_id, entityType, now, userId, userEmail)
 
                     # Only set the attributes tuple of committing attributes to the table besides the UUID
-                    insertVals.append((insUuid, entityType, now, userId, userEmail))
+                    insertVals.append((insUuid, entityType, awareUTCTimeNow, userId, userEmail))
                     if insert_attributes_for_uuid:
                         insertAttribVals.append((insUuid, ins_app_base_id, submission_ids[n] if gen_submission_ids else None))
 
