@@ -423,7 +423,7 @@ class UUIDWorker:
         # Verify we know how to handle the entity type provided
         entityType = content['entity_type'].upper().strip()
         if entityType not in KNOWN_ENTITY_TYPES and entityType not in MAPPED_ENTITY_TYPES.keys():
-            return Response(f"Unrecognized entity type {content['entity_type']}.")
+            return Response(f"Unrecognized entity type {content['entity_type']}.", 400)
 
         # If this is an entity type which requires transformation, it is done here so
         # all the business logic associated with the actual entity type and with the
