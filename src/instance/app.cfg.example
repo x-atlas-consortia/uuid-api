@@ -19,9 +19,9 @@ BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 BASE_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
 KNOWN_ENTITY_TYPES = BASE_ID_ENTITY_TYPES + ['FILE']
 MAPPED_ENTITY_TYPES = {
-    'PAPER': {  'entity_type': 'DATASET'
-                ,'entity_class': 'Paper'
-                ,'entity_class_JSON': '{"class": "Paper"}'}
+    'PUBLICATION': {    'entity_type': 'DATASET'
+                        ,'entity_class': 'Publication'
+                        ,'entity_class_JSON': '{"class": "Publication"}'}
 }
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'UPLOAD']
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']

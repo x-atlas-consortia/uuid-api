@@ -428,7 +428,7 @@ class UUIDWorker:
         # If this is an entity type which requires transformation, it is done here so
         # all the business logic associated with the actual entity type and with the
         # entity class are executed before persisted to the database.
-        # E.G. "paper" entities become "dataset" entities of class "paper"
+        # E.G. "publication" entities become "dataset" entities of class "publication"
         entity_class = MAPPED_ENTITY_TYPES[entityType]['entity_class'] if entityType in MAPPED_ENTITY_TYPES.keys() else None
         entity_class_JSON = MAPPED_ENTITY_TYPES[entityType]['entity_class_JSON'] if entityType in MAPPED_ENTITY_TYPES.keys() else None
         # now that entity_class and entity_class_JSON have been set based on entityType, remap entityType to
@@ -660,7 +660,7 @@ class UUIDWorker:
             # N.B. descendant_count is tied to gen_submission_ids i.e. will not need a
             #      row to support descendant_count unless submission_id is populated.
             insert_attributes_for_uuid = gen_base_ids or gen_submission_ids or \
-                                         entity_class == 'Paper'
+                                         entity_class == 'Publication'
 
             # Loop to generate the number of entityType requested in the nIds argument, in batches of
             # size MAX_GEN_IDS.
