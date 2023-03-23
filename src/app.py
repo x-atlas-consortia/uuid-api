@@ -30,9 +30,13 @@ def init():
     global logger
     global worker
     try:
-        logger = logging.getLogger('uuid.service')
-        logger.setLevel(logging.INFO)
-        logFH = logging.FileHandler(LOG_FILE_NAME)
+        logger = logging.getLogger(name='uuid.service')
+        logger.setLevel(level=logging.INFO)
+        logFH = logging.FileHandler(filename=LOG_FILE_NAME)
+        # Set logging format and level (default is warning)
+        logging_formatter = logging.Formatter(fmt='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s'
+                                              ,datefmt='%Y-%m-%d %H:%M:%S')
+        logFH.setFormatter(logging_formatter)
         logger.addHandler(logFH)
         logger.info("started")
     except Exception as e:
@@ -47,7 +51,6 @@ def init():
         print(str(e))
         logger.error(e, exc_info=True)
         print("Check the log file for further information: " + LOG_FILE_NAME)
-
 
 @app.route('/', methods=['GET'])
 def index():

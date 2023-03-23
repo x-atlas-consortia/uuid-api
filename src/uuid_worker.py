@@ -12,12 +12,10 @@ from app_db import DBConn
 import copy
 import re
 
-from S3_worker import S3Worker
-
 # HuBMAP commons
-# from hm_auth import AuthHelper
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
 from hubmap_commons.hm_auth import AuthHelper
+from hubmap_commons.S3_worker import S3Worker
 
 MAX_GEN_IDS = 200
 
@@ -306,17 +304,32 @@ class UUIDWorker:
             MULTIPLE_ALLOWED_ORGANS = app_config['MULTIPLE_ALLOWED_ORGANS']
             SUBMISSION_ID_ENTITY_TYPES = app_config['SUBMISSION_ID_ENTITY_TYPES']
 
-            self.aws_access_key_id = app_config['AWS_ACCESS_KEY_ID']
-            self.aws_secret_access_key = app_config['AWS_SECRET_ACCESS_KEY']
-            self.aws_s3_bucket_name = app_config['AWS_S3_BUCKET_NAME']
-            self.aws_object_url_expiration_in_secs = app_config['AWS_OBJECT_URL_EXPIRATION_IN_SECS']
-
-            if 'LARGE_RESPONSE_THRESHOLD' not in app_config or int(app_config['LARGE_RESPONSE_THRESHOLD'] > 9999999):
-                self.logger.error("LARGE_RESPONSE_THRESHOLD missing from app.cfg or too big for AWS Gateway. Defaulting to smaller value.")
-                self.large_response_threshold = 5000000
+            if 'LARGE_RESPONSE_THRESHOLD' not in app_config \
+                or not isinstance(app_config['LARGE_RESPONSE_THRESHOLD'], int) \
+                or int(app_config['LARGE_RESPONSE_THRESHOLD'] > 9999999):
+                self.logger.error(f"There is a problem with the LARGE_RESPONSE_THRESHOLD setting in app.cfg."
+                                  f" Defaulting to small value so noticed quickly.")
+                large_response_threshold = 5000000
             else:
-                self.large_response_threshold = int(app_config['LARGE_RESPONSE_THRESHOLD'])
-                self.logger.info(f"large_response_threshold set to {self.large_response_threshold}.")
+                large_response_threshold = int(app_config['LARGE_RESPONSE_THRESHOLD'])
+
+            self.logger.info(f"large_response_threshold set to {large_response_threshold}.")
+            self.S3_settings_dict = {   'large_response_threshold': large_response_threshold
+                                        ,'aws_access_key_id': app_config['AWS_ACCESS_KEY_ID']
+                                        ,'aws_secret_access_key': app_config['AWS_SECRET_ACCESS_KEY']
+                                        ,'aws_s3_bucket_name': app_config['AWS_S3_BUCKET_NAME']
+                                        ,'aws_object_url_expiration_in_secs': app_config['AWS_OBJECT_URL_EXPIRATION_IN_SECS']
+                                        ,'service_configured_obj_prefix': app_config['AWS_S3_OBJECT_PREFIX']}
+            try:
+                self.theS3Worker = S3Worker(self.S3_settings_dict['aws_access_key_id']
+                                            ,self.S3_settings_dict['aws_secret_access_key']
+                                            ,self.S3_settings_dict['aws_s3_bucket_name']
+                                            ,self.S3_settings_dict['aws_object_url_expiration_in_secs'])
+                self.logger.info("theS3Worker initialized")
+            except Exception as e:
+                self.logger.error(f"Error initializing theS3Worker - '{str(e)}'.", exc_info=True)
+
+                raise Exception(f"Unexpected error: {str(e)}")
 
             if not clientId:
                 raise Exception("Configuration parameter APP_CLIENT_ID not valid.")
@@ -1104,22 +1117,12 @@ class UUIDWorker:
                            curs.fetchall()]
 
         results_json = json.dumps(results)
-        if len(results_json.encode('utf-8')) < self.large_response_threshold:
+        if len(results_json.encode('utf-8')) < self.S3_settings_dict['large_response_threshold']:
             return Response(response=results_json, mimetype="application/json")
         else:
-            anS3Worker = None
             try:
-                anS3Worker = S3Worker(self.aws_access_key_id, self.aws_secret_access_key, self.aws_s3_bucket_name, self.aws_object_url_expiration_in_secs)
-                self.logger.info("anS3Worker initialized")
-            except Exception as e:
-                self.logger.error(f"Error getting anS3Worker to handle len(results)={len(results)}.")
-                self.logger.error(e, exc_info=True)
-                return Response(f"Unexpected error: {str(e)}", 500)
-
-            try:
-                # return anS3Worker.do_whatever_with_S3()
-                obj_key = anS3Worker.stash_text_as_object(results_json, entity_uuid[0])
-                aws_presigned_url = anS3Worker.create_URL_for_object(obj_key)
+                obj_key = self.theS3Worker.stash_text_as_object(results_json, entity_uuid[0])
+                aws_presigned_url = self.theS3Worker.create_URL_for_object(obj_key)
                 return Response(aws_presigned_url, 303)
             except Exception as e:
                 self.logger.error(f"Error getting presigned URL for obj_key={obj_key}.")
