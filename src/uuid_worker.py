@@ -11,6 +11,7 @@ import json
 from app_db import DBConn
 import copy
 import re
+import inspect
 
 # HuBMAP commons
 from hubmap_commons.string_helper import isBlank, listToCommaSeparated, padLeadingZeros
@@ -328,7 +329,6 @@ class UUIDWorker:
                 self.logger.info("theS3Worker initialized")
             except Exception as e:
                 self.logger.error(f"Error initializing theS3Worker - '{str(e)}'.", exc_info=True)
-
                 raise Exception(f"Unexpected error: {str(e)}")
 
             if not clientId:
@@ -1120,8 +1120,16 @@ class UUIDWorker:
         if len(results_json.encode('utf-8')) < self.S3_settings_dict['large_response_threshold']:
             return Response(response=results_json, mimetype="application/json")
         else:
+            obj_key = None
             try:
-                obj_key = self.theS3Worker.stash_text_as_object(results_json, entity_uuid[0])
+                # Set a prefix used for naming any objects that end up in S3 which is
+                # specific to this service and this function.
+                function_name = inspect.currentframe().f_code.co_name
+                self.S3_settings_dict['service_configured_obj_prefix'] = \
+                    f"{self.S3_settings_dict['service_configured_obj_prefix'].replace('unspecified-function', function_name)}"
+                obj_prefix = self.S3_settings_dict['service_configured_obj_prefix'] + '_' + entity_uuid[0]
+                obj_key = self.theS3Worker.stash_text_as_object(theText=results_json
+                                                                ,aUUID=obj_prefix)
                 aws_presigned_url = self.theS3Worker.create_URL_for_object(obj_key)
                 return Response(aws_presigned_url, 303)
             except Exception as e:
