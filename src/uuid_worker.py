@@ -237,6 +237,16 @@ def getDataIdType(identifier):
     # Never get here, if isValidAppId() called at beginning
     return DataIdType.INVALID
 
+#remove any stray BOM characters which can come from
+#copy/paste out of some software :(
+def remove_bom(val):
+    if isBlank(val):
+        return val
+    if val[0] == u'\ufeff':
+        val = val[1:]
+    if val[-1] == u'\ufeff':
+        val = val[:-1]
+    return val
 
 def isValidAppId(app_id):
     if isBlank(app_id): return False
@@ -907,6 +917,7 @@ class UUIDWorker:
         return record
 
     def getIdInfo(self, app_id):
+        app_id = remove_bom(app_id)
         if not isValidAppId(app_id):
             return Response(app_id + " is not a valid id format", 400)
 

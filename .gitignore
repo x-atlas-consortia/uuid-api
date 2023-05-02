@@ -2,8 +2,10 @@
 .DS_Store
 
 # Ignore config files
-src/instance/app.cfg
+src/instance/*
+!src/instance/*.cfg.example
 app.cfg
+
 reload_from_neo4j/reload.properties
 
 BUILD
