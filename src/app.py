@@ -11,6 +11,19 @@ from flask import Flask, request, Response, jsonify
 from hubmap_commons.hm_auth import secured
 from hubmap_commons.string_helper import isBlank
 
+# Root logger configuration
+global logger
+
+# Set logging format and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `log/uwsgi-uuid-api.log`
+# Log rotation is handled via logrotate on the host system with a configuration file
+# Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+
+# Use `getLogger()` instead of `getLogger(__name__)` to apply the config to the root logger
+# will be inherited by the sub-module loggers
+logger = logging.getLogger()
+
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
             instance_relative_config=True)
@@ -21,23 +34,12 @@ try:
 except Exception as e:
     raise Exception("Failed to get configuration from instance/app.cfg")
 
-LOG_FILE_NAME = "../log/uuid-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log"
-logger = None
 worker = None
 
 @app.before_first_request
 def init():
-    global logger
     global worker
     try:
-        logger = logging.getLogger(name='uuid.service')
-        logger.setLevel(level=logging.INFO)
-        logFH = logging.FileHandler(filename=LOG_FILE_NAME)
-        # Set logging format and level (default is warning)
-        logging_formatter = logging.Formatter(fmt='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s'
-                                              ,datefmt='%Y-%m-%d %H:%M:%S')
-        logFH.setFormatter(logging_formatter)
-        logger.addHandler(logFH)
         logger.info("started")
     except Exception as e:
         print("Error opening log file during startup")
@@ -61,7 +63,6 @@ def index():
 @app.route('/status', methods=['GET'])
 def status():
     global worker
-    global logger
 
     response_data = {
         # Use strip() to remove leading and trailing spaces, newlines, and tabs
@@ -129,7 +130,7 @@ POST arguments in json
 @secured(has_write=True)
 def add_uuid():
     global worker
-    global logger
+
     try:
         if request.method == "POST":
             if 'entity_count' in request.args:
@@ -156,7 +157,7 @@ def add_uuid():
 @app.route('/uuid/<uuid>', methods=["GET"])
 def get_uuid(uuid):
     global worker
-    global logger
+
     try:
         if request.method == "GET":
             # The info is a pretty print json string
@@ -181,7 +182,7 @@ def get_uuid(uuid):
 @secured(has_read=True)
 def is_uuid(uuid):
     global worker
-    global logger
+
     try:
         if request.method == "GET":
             exists = worker.getIdExists(uuid)
@@ -200,7 +201,7 @@ def is_uuid(uuid):
 @secured(has_read=True)
 def get_file_id(file_uuid):
     global worker
-    global logger
+
     try:
         file_id_info = worker.getFileIdInfo(file_uuid)
         if isinstance(file_id_info, Response): return file_id_info
@@ -215,7 +216,7 @@ def get_file_id(file_uuid):
 @secured(has_read=True)
 def get_ancestors(uuid):
     global worker
-    global logger
+
     try:
         ancestors = worker.getAncestors(uuid)
         if isinstance(ancestors, Response): return ancestors
@@ -287,7 +288,7 @@ def get_ancestors(uuid):
 @secured(has_read=True)
 def get_file_info(entity_id):
     global worker
-    global logger
+
     try:
         file_info = worker.get_file_info(entity_id)
         if isinstance(file_info, Response): return file_info
