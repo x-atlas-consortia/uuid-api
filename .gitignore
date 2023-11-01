@@ -8,6 +8,9 @@ app.cfg
 
 reload_from_neo4j/reload.properties
 
+# Ignore docker env file
+hubmap-docker/.env
+
 BUILD
 # mounted BUILD/VERSION file
 src/BUILD
