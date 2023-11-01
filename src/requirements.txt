@@ -1,4 +1,4 @@
-Flask==2.1.3
+Flask==2.2.5
 
 # Flask 2.1.3 installs the latest Werkzeug==3.0.0 (released on 9/30/2023) and causing import issues 
 # Use a pinned version 2.3.7 (the latest release before 3.0.0) to mitigate temporaryly
