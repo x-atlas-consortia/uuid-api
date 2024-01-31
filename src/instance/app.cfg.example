@@ -24,7 +24,7 @@ MAPPED_ENTITY_TYPES = {
                         ,'entity_class_JSON': '{"class": "Publication"}'}
 }
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'UPLOAD']
-MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
+MULTIPLE_ALLOWED_ORGANS = ['LV', 'LY', 'SK', 'BD', 'BM']
 
 # Only for HubMap, not SenNet
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
