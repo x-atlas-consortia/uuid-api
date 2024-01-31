@@ -50,9 +50,9 @@ SQL_INSERT_UUIDS = \
 
 SQL_INSERT_UUIDS_ATTRIBUTES_DEFAULT_DESC_COUNT = \
     ("INSERT INTO uuids_attributes "
-     " (UUID, BASE_ID, SUBMISSION_ID, ENTITY_CLASS_METADATA)"
+     " (UUID, BASE_ID, SUBMISSION_ID)"
      " VALUES"
-     " (%s, %s, %s, %s)"
+     " (%s, %s, %s)"
      )
 
 SQL_INSERT_ANCESTORS = \
@@ -284,7 +284,6 @@ class UUIDWorker:
         global BASE_DIR_TYPES
         global BASE_ID_ENTITY_TYPES
         global KNOWN_ENTITY_TYPES
-        global MAPPED_ENTITY_TYPES
         global ANCESTOR_REQUIRED_ENTITY_TYPES
         global MULTIPLE_ALLOWED_ORGANS
         global SUBMISSION_ID_ENTITY_TYPES
@@ -310,7 +309,6 @@ class UUIDWorker:
             BASE_DIR_TYPES = app_config['BASE_DIR_TYPES']
             BASE_ID_ENTITY_TYPES = app_config['BASE_ID_ENTITY_TYPES']
             KNOWN_ENTITY_TYPES = app_config['KNOWN_ENTITY_TYPES']
-            MAPPED_ENTITY_TYPES = app_config['MAPPED_ENTITY_TYPES']
             ANCESTOR_REQUIRED_ENTITY_TYPES = app_config['ANCESTOR_REQUIRED_ENTITY_TYPES']
             MULTIPLE_ALLOWED_ORGANS = app_config['MULTIPLE_ALLOWED_ORGANS']
             SUBMISSION_ID_ENTITY_TYPES = app_config['SUBMISSION_ID_ENTITY_TYPES']
@@ -345,15 +343,6 @@ class UUIDWorker:
                 raise Exception("Configuration parameter APP_CLIENT_ID not valid.")
             if not clientSecret:
                 raise Exception("Configuration parameter APP_CLIENT_SECRET not valid.")
-
-            # Verify the JSON elements of the configuration, which will be stored in
-            # MySQL rows of type 'json', contain valid JSON.
-            for entity_type in MAPPED_ENTITY_TYPES.keys():
-                try:
-                    json.loads(MAPPED_ENTITY_TYPES[entity_type]['entity_class_JSON'])
-                except (ValueError, TypeError):
-                    raise Exception(f"MAPPED_ENTITY_TYPES[{entity_type}] configured with invalid JSON:"
-                                    f" {MAPPED_ENTITY_TYPES[entity_type]['entity_class_JSON']}.")
         except KeyError as ke:
             self.logger.error("Expected configuration failed to load %s from app_config=%s.",ke,app_config)
             raise Exception("Expected configuration failed to load. See the logs.")
@@ -445,18 +434,8 @@ class UUIDWorker:
 
         # Verify we know how to handle the entity type provided
         entityType = content['entity_type'].upper().strip()
-        if entityType not in KNOWN_ENTITY_TYPES and entityType not in MAPPED_ENTITY_TYPES.keys():
+        if entityType not in KNOWN_ENTITY_TYPES:
             return Response(f"Unrecognized entity type {content['entity_type']}.", 400)
-
-        # If this is an entity type which requires transformation, it is done here so
-        # all the business logic associated with the actual entity type and with the
-        # entity class are executed before persisted to the database.
-        # E.G. "publication" entities become "dataset" entities of class "publication"
-        entity_class = MAPPED_ENTITY_TYPES[entityType]['entity_class'] if entityType in MAPPED_ENTITY_TYPES.keys() else None
-        entity_class_JSON = MAPPED_ENTITY_TYPES[entityType]['entity_class_JSON'] if entityType in MAPPED_ENTITY_TYPES.keys() else None
-        # now that entity_class and entity_class_JSON have been set based on entityType, remap entityType to
-        # database value, if needed.
-        entityType = MAPPED_ENTITY_TYPES[entityType]['entity_type'] if entityType in MAPPED_ENTITY_TYPES.keys() else entityType
 
         organ_code = None
         if 'organ_code' in content and not isBlank(content['organ_code']):
@@ -523,8 +502,7 @@ class UUIDWorker:
                 return (Response("Parent id " + parentId + " does not exist", 400))
 
         return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code=organ_code,
-                             lab_code=lab_code, file_info_array=file_info, base_dir_type=base_dir,
-                             entity_class=entity_class, entity_class_JSON=entity_class_JSON)
+                             lab_code=lab_code, file_info_array=file_info, base_dir_type=base_dir)
 
     '''
     def uuidPut(self, req):
@@ -659,7 +637,7 @@ class UUIDWorker:
     # generate multiple ids, one for each display id in the displayIds array
 
     def newUUIDs(self, parentIDs, entityType, userId, userEmail, nIds, organ_code=None, lab_code=None,
-                 file_info_array=None, base_dir_type=None, entity_class=None, entity_class_JSON=None):
+                 file_info_array=None, base_dir_type=None):
 
         gen_base_ids = entityType in BASE_ID_ENTITY_TYPES
         returnIds = []
@@ -682,8 +660,7 @@ class UUIDWorker:
             # the UUID row that will be created.
             # N.B. descendant_count is tied to gen_submission_ids i.e. will not need a
             #      row to support descendant_count unless submission_id is populated.
-            insert_attributes_for_uuid = gen_base_ids or gen_submission_ids or \
-                                         entity_class == 'Publication'
+            insert_attributes_for_uuid = gen_base_ids or gen_submission_ids
 
             # Loop to generate the number of entityType requested in the nIds argument, in batches of
             # size MAX_GEN_IDS.
@@ -748,11 +725,9 @@ class UUIDWorker:
                     insertVals.append((insUuid, entityType, awareUTCTimeNow, userId, userEmail))
 
                     if insert_attributes_for_uuid:
-                        insertAttribVals.append((insUuid
-                                                 , ins_app_base_id
-                                                 , submission_ids[n] if gen_submission_ids else None
-                                                 , entity_class_JSON if entity_class_JSON else None))
-
+                        insertAttribVals.append(    (insUuid
+                                                     ,ins_app_base_id
+                                                     ,submission_ids[n] if gen_submission_ids else None))
                     if store_file_info:
                         info_idx = i + n
                         file_path = file_info_array[info_idx]['path']

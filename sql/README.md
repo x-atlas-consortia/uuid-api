@@ -32,6 +32,9 @@ After setting the connection parameters and clicking "Next", check the following
 ````
 Omit schema qualifier in object names
 ````
+````
+Include model attached scripts
+````
 and uncheck the following option on the same screen
 ````
 Generate USE statements
@@ -44,7 +47,15 @@ and
 ````
 Export MySQL Routine Objects
 ````
-Click "Next".  Examine the generated SQL script to assure it is independent of the database it is being executed in. Use the buttons or clipboard to save this file as `uuid-api.sql`.
+Click "Next".  Examine the generated SQL script to assure it is independent of the database it is being executed in. For example, statements should look like
+
+````CREATE TABLE IF NOT EXISTS `uuids`...````
+
+and **_not_**
+
+````CREATE TABLE IF NOT EXISTS `hm_dev_uuids`.`uuids`...````
+
+Use the buttons or clipboard to save this file as `uuid-api.sql`.
 
 Click "Cancel" to abandon the rest of the "forward engineer" process.
 
