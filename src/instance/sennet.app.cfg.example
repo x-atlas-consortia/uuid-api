@@ -16,11 +16,11 @@ APP_ID = 'sennet_id'
 APP_BASE_ID = 'base_id'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
-BASE_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'SOURCE', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR']
+# Entity types which have a uuids_attributes.BASE_ID associated with them
+BASE_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'SOURCE', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR', 'PUBLICATION']]
+# A full list of values found in uuids.ENTITY_TYPE, currently partitioned into those with a BASE_ID and those without.
 KNOWN_ENTITY_TYPES = BASE_ID_ENTITY_TYPES + ['FILE', 'LAB']
-MAPPED_ENTITY_TYPES = {
-}
-ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'SOURCE', 'DATASET', 'FILE', 'UPLOAD']
+ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'SOURCE', 'DATASET', 'FILE', 'UPLOAD', 'PUBLICATION']
 MULTIPLE_ALLOWED_ORGANS = ['LY', 'SK', 'BD', 'BM']
 
 # Only for HubMap, not SenNet
