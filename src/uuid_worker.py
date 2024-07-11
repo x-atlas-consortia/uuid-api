@@ -126,6 +126,12 @@ SQL_SELECT_ID_ROW_COUNT_BY_UUID = \
      " WHERE uuids.UUID = %s"
      )
 
+SQL_SELECT_ID_ROW_COUNT_TOTAL_MATCHES = \
+    ("SELECT COUNT(*) AS total_match_count"
+     " FROM uuids"
+     " WHERE uuids.UUID IN (%s)"
+     )
+
 SQL_SELECT_ID_ROW_COUNT_BY_BASE_ID = \
     ("SELECT COUNT(*) AS row_count"
      " FROM uuids_attributes"
@@ -497,9 +503,14 @@ class UUIDWorker:
                 base_dir = fi['base_dir'].strip().upper()
                 if not base_dir in BASE_DIR_TYPES:
                     return (Response("valid base_dir values are " + " ".join(BASE_DIR_TYPES), 400))
-        for parentId in ancestor_ids:
-            if not self.uuid_exists(parentId):
-                return (Response("Parent id " + parentId + " does not exist", 400))
+        # Verify all of the ancestor UUIDs exist in the database. Form an error response if
+        # an Exception is raised.
+        try:
+            if len(ancestor_ids) == 0 or self.uuids_all_exist(uuids=ancestor_ids):
+                pass
+        except Exception as e:
+            return Response(response=f"Verifying existence of {len(ancestor_ids)} ancestor IDs caused: '{str(e)}'"
+                            , status=400)
 
         return self.newUUIDs(ancestor_ids, entityType, userId, userEmail, nIds, organ_code=organ_code,
                              lab_code=lab_code, file_info_array=file_info, base_dir_type=base_dir)
@@ -773,7 +784,8 @@ class UUIDWorker:
                             if store_file_info:
                                 curs.executemany(SQL_INSERT_FILES, file_info_insert_vals)
 
-                            curs.executemany(SQL_INSERT_ANCESTORS, insertParents)
+                            if insertParents:
+                                curs.executemany(SQL_INSERT_ANCESTORS, insertParents)
                         dbConn.commit()
                     except mysql.connector.errors.Error as dbErr:
                         dbConn.rollback()
@@ -1006,6 +1018,43 @@ class UUIDWorker:
 
         rdict = self.modify_app_specific_uuid(rdict)
         return json.dumps(rdict, indent=4, sort_keys=True, default=str)
+
+    # Verify all UUIDs in a list are found in the uuids table. Because uuids.UUID is a
+    # primary key, duplicates will not be found. Return True if all list entries are
+    # found, and raise an exception if one or more entries are not found when
+    # expected to be in the uuids table.
+    def uuids_all_exist(self, uuids:list):
+
+        # Form a tuple containing one string with the identifiers passed in, with each element quoted as
+        # required by MySQL, to be used by parameter substitution in the prepared statement.
+        sql_IN_clause_string = listToCommaSeparated(lst=uuids
+                                                    , quoteChar="'")
+
+        # Keep track of the length of the list passed in, expecting the database to match exactly that
+        # number for existing uuids.
+        expected_match_count = len(uuids)
+
+        with closing(self.hmdb.getDBConnection()) as dbConn:
+            with closing(dbConn.cursor(prepared=True)) as curs:
+
+                # Unable to get "format" paramstyle from PEP-249 to do parameter substitution to work correctly to
+                # set the IN clause for the following statement.
+                # curs.execute(SQL_SELECT_ID_ROW_COUNT_TOTAL_MATCHES
+                #             , (sql_IN_clause_string, )) # N.B. comma to force creation of tuple with one value, rather than scalar
+                # So using direct string substitution.  N.B. the substituted value is not from user input which must
+                # be cleansed, but internal microservices.
+                total_matches_sql = SQL_SELECT_ID_ROW_COUNT_TOTAL_MATCHES % sql_IN_clause_string
+                curs.execute(total_matches_sql)
+                res = curs.fetchone()
+
+        if (res is None or len(res) != 1):
+            raise Exception(f"Failure retrieving a database result to verify"
+                            f" {expected_match_count} uuids exist in database.")
+        else:
+            match_count = res[0]
+
+        if (expected_match_count == match_count): return True
+        raise Exception(f"For {expected_match_count} uuids, only found {match_count} exist in database.")
 
     def uuid_exists(self, app_id):
         with closing(self.hmdb.getDBConnection()) as dbConn:
