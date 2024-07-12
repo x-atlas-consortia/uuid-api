@@ -315,7 +315,7 @@ class UUIDWorker:
 
             if 'LARGE_RESPONSE_THRESHOLD' not in app_config \
                 or not isinstance(app_config['LARGE_RESPONSE_THRESHOLD'], int) \
-                or int(app_config['LARGE_RESPONSE_THRESHOLD'] > 9999999):
+                or app_config['LARGE_RESPONSE_THRESHOLD'] > 10*(2**20)-1:
                 self.logger.error(f"There is a problem with the LARGE_RESPONSE_THRESHOLD setting in app.cfg."
                                   f" Defaulting to small value so noticed quickly.")
                 large_response_threshold = 5000000
