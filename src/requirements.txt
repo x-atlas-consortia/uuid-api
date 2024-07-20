@@ -1,18 +1,18 @@
-Flask==2.1.3
+Flask==3.0.3
 
 # Flask 2.1.3 installs the latest Werkzeug==3.0.0 (released on 9/30/2023) and causing import issues 
 # Use a pinned version 2.3.7 (the latest release before 3.0.0) to mitigate temporaryly
 # Will upgrade Flask to newer version later on across all APIs. 10/3/2023 - Zhou
-Werkzeug==2.3.7
+Werkzeug==3.0.3
 
 # To match the AWS RDS MySQL server 8.0.23, returned by the SELECT VERSION() query.
 mysql-connector-python==8.0.23
 
 # The commons package requires requests>=2.22.0
-requests==2.25.1
+requests==2.32.3
 
 # Use the published package from PyPI as default
 # Use the branch name of commons from github for testing new changes made in commons
 # Default is master branch specified in docker-compose.yml if not set
 # git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
-hubmap-commons==2.1.12
+hubmap-commons==2.1.15

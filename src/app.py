@@ -22,7 +22,12 @@ logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message
 
 # Use `getLogger()` instead of `getLogger(__name__)` to apply the config to the root logger
 # will be inherited by the sub-module loggers
-logger = logging.getLogger()
+try:
+    logger = logging.getLogger()
+    logger.info(f"Starting. Logger initialized, with logging level {logger.level}")
+except Exception as e:
+    print("Error opening log file during startup")
+    print(str(e))
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
@@ -31,28 +36,24 @@ app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname
 # Use configuration from instance/app.cfg, deployed per-app from examples in the repository.
 try:
     app.config.from_pyfile('app.cfg')
+    logger.info("Application initialized from instance/app.cfg")
 except Exception as e:
+    logger.critical(f"Unable to initialize application from instance/app.cfg due to e='{str(e)}'")
     raise Exception("Failed to get configuration from instance/app.cfg")
 
 worker = None
+try:
+    worker = UUIDWorker(app_config=app.config)
+    logger.info("UUIDWorker instantiated using app.cfg setting.")
+except Exception as e:
+    logger.critical(f"Unable to instantiate a UUIDWorker during startup.")
+    print("Error instantiating a UUIDWorker during startup.")
+    print(str(e))
+    logger.error(e, exc_info=True)
+    print("Check the log file for further information: " + LOG_FILE_NAME)
 
-@app.before_first_request
-def init():
-    global worker
-    try:
-        logger.info("started")
-    except Exception as e:
-        print("Error opening log file during startup")
-        print(str(e))
-
-    try:
-        worker = UUIDWorker(app_config=app.config)
-        logger.info("initialized")
-    except Exception as e:
-        print("Error during startup.")
-        print(str(e))
-        logger.error(e, exc_info=True)
-        print("Check the log file for further information: " + LOG_FILE_NAME)
+logger.info('')
+logger.info('')
 
 @app.route('/', methods=['GET'])
 def index():
