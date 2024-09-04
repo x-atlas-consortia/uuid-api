@@ -56,11 +56,11 @@ else
     echo
 
     if [ "$1" = "start" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api up -d
+        docker compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api up -d
     elif [ "$1" = "stop" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api stop
+        docker compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api stop
     elif [ "$1" = "down" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api down
+        docker compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api down
     fi
 fi
 
