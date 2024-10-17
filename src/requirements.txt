@@ -15,4 +15,4 @@ requests==2.32.3
 # Use the branch name of commons from github for testing new changes made in commons
 # Default is master branch specified in docker-compose.yml if not set
 # git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
-hubmap-commons==2.1.18
+hubmap-commons==2.1.15
