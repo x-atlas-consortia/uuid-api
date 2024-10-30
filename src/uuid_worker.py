@@ -336,13 +336,15 @@ class UUIDWorker:
                                         ,'aws_object_url_expiration_in_secs': app_config['AWS_OBJECT_URL_EXPIRATION_IN_SECS']
                                         ,'service_configured_obj_prefix': app_config['AWS_S3_OBJECT_PREFIX']}
             try:
-                self.theS3Worker = S3Worker(self.S3_settings_dict['aws_access_key_id']
-                                            ,self.S3_settings_dict['aws_secret_access_key']
-                                            ,self.S3_settings_dict['aws_s3_bucket_name']
-                                            ,self.S3_settings_dict['aws_object_url_expiration_in_secs'])
-                self.logger.info("theS3Worker initialized")
+                self.theS3Worker = S3Worker(ACCESS_KEY_ID=self.S3_settings_dict['aws_access_key_id']
+                                            , SECRET_ACCESS_KEY=self.S3_settings_dict['aws_secret_access_key']
+                                            , S3_BUCKET_NAME=self.S3_settings_dict['aws_s3_bucket_name']
+                                            , S3_OBJECT_URL_EXPIRATION_IN_SECS=self.S3_settings_dict['aws_object_url_expiration_in_secs']
+                                            , LARGE_RESPONSE_THRESHOLD=self.S3_settings_dict['large_response_threshold']
+                                            , SERVICE_S3_OBJ_PREFIX=self.S3_settings_dict['service_configured_obj_prefix'])
+                self.logger.info("self.theS3Worker initialized")
             except Exception as e:
-                self.logger.error(f"Error initializing theS3Worker - '{str(e)}'.", exc_info=True)
+                self.logger.error(f"Error initializing self.theS3Worker - '{str(e)}'.", exc_info=True)
                 raise Exception(f"Unexpected error: {str(e)}")
 
             if not clientId:
