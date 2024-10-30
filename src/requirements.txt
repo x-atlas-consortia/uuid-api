@@ -6,7 +6,7 @@ Flask==3.0.3
 Werkzeug==3.0.3
 
 # To match the AWS RDS MySQL server 8.0.23, returned by the SELECT VERSION() query.
-mysql-connector-python==8.0.23
+mysql-connector-python==9.1.0
 
 # The commons package requires requests>=2.22.0
 requests==2.32.3
