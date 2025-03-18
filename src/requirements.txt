@@ -5,8 +5,8 @@ Flask==3.0.3
 # Will upgrade Flask to newer version later on across all APIs. 10/3/2023 - Zhou
 Werkzeug==3.0.3
 
-# To match the AWS RDS MySQL server 8.0.23, returned by the SELECT VERSION() query.
-mysql-connector-python==8.0.23
+# Version compatible with the AWS RDS MySQL server 8.0.32, returned by the SELECT VERSION() query.
+mysql-connector-python==9.1.0
 
 # The commons package requires requests>=2.22.0
 requests==2.32.3
