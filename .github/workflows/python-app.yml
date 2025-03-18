@@ -23,4 +23,8 @@ jobs:
       working-directory: src
     - name: Install Dependencies
       run: pip install -r requirements.txt
+<<<<<<< HEAD
       working-directory: src
+=======
+      working-directory: src
+>>>>>>> eb4b37b72dbd8bfac76d60271b95dac6eb8801c8

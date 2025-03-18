@@ -110,7 +110,7 @@ else
     elif [ "$1" = "start" ]; then
         docker-compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api up -d
     elif [ "$1" = "stop" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api-api stop
+        docker-compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api stop
     elif [ "$1" = "down" ]; then
         docker-compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api down
     fi

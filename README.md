@@ -62,8 +62,3 @@ cd hubmap-docker
 - Make PRs to `dev-integrate`
 - As a codeowner, Zhou is automatically assigned as a reviewer to each PR. When all other reviewers have approved, he will approve as well, merge to devel, and redeploy the DEV instance.
 - When a feature branch is ready for testing and release, make a PR to `main` for deployment and testing on the TEST infrastructure as above.
-
-
-### Updating API Documentation
-
-The documentation for the API calls is hosted on SmartAPI. Modifying the `uuid-api-spec.yaml` file and committing the changes to GitHub should update the API shown on SmartAPI.  SmartAPI allows users to register API documents. The documentation is associated with this GitHub account: api-developers@hubmapconsortium.org. 
