@@ -21,7 +21,7 @@ BASE_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'DONOR', 'DATASET', 'COLLECTION', 
 # A full list of values found in uuids.ENTITY_TYPE, currently partitioned into those with a BASE_ID and those without.
 KNOWN_ENTITY_TYPES = BASE_ID_ENTITY_TYPES + ['FILE', 'LAB']
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'DONOR', 'DATASET', 'FILE', 'UPLOAD', 'PUBLICATION']
-MULTIPLE_ALLOWED_ORGANS = ['LV', 'LY', 'SK', 'BD', 'BM']
+MULTIPLE_ALLOWED_ORGANS = ['VL', 'LY', 'SK', 'BD', 'BM']
 
 # Only for HubMap, not SenNet
 SUBMISSION_ID_ENTITY_TYPES = ['SAMPLE', 'DONOR']
