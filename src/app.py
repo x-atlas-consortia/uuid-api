@@ -100,7 +100,8 @@ POST arguments in json
    file_info-  required only if the entity type is FILE. A list/array of information about each
                file that requires an id to be generated for it. The size of this array is required
                to match the optional URL argument,  entity_count (or be 1 in the case where this argument
-               is defaulted to 1).
+               is defaulted to 1). N.B. the field checksum has been deprecated and should be replaced
+               by md5_checksum or sha256_checksum.  Requests which try to save to checksum will now fail.
                Each file info element should contain:
                      path- required: the path to the file in storage.  For the purposes of the
                                      UUID system this can be a full path or relative, but it is
@@ -109,10 +110,11 @@ POST arguments in json
                                      will be replaced by the generated file uuid before being stored.
                                      This is useful in the case where the path to the file will include
                                      the file uuid, such as for files uploaded via the ingest portal.
-                 base_dir- required: a specifier for the base directory where the file is stored
-                                     valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD
+                     base_dir- required: a specifier for the base directory where the file is stored
+                                         valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD
                                         
-                 checksum- optional: An MD5 checksum/hash of the file
+                     md5_checksum- optional: An MD5 checksum/hash of the file
+                     sha256_checksum- optional: An SHA-256 checksum/hash of the file
                      size- optional: The size of the file as an integer
    
 
@@ -128,8 +130,6 @@ POST arguments in json
             match the entity_count argument
       
 '''
-
-
 # Add backwards compatibility for older version of entity-api
 @app.route('/hmuuid', methods=["POST"])
 @app.route('/uuid', methods=["POST"])
@@ -262,28 +262,28 @@ def get_ancestors(uuid):
 #        [
 #            {
 #                "path": "hg19.exonic+intronic/alignment/Puck_200903_02_mapping_rate.txt",
-#                "checksum": "c39c7653bd0802eb875af8eb8cb9f680",
+#                "md5_checksum": "c39c7653bd0802eb875af8eb8cb9f680",
 #                "size": 276,
 #                "base_dir": "DATA_UPLOAD",
 #                "file_uuid": "11d6412f1864ee7945f75e1f6b661dfa"
 #            },
 #            {
 #                "path": "hg19.exonic+intronic/fastq/Puck_200903_02.read2.fastq.gz",
-#                "checksum": "ba8f5f30df2150834b2e1a86c2773f6a",
+#                "md5_checksum": "ba8f5f30df2150834b2e1a86c2773f6a",
 #                "size": 5023066884,
 #                "base_dir": "DATA_UPLOAD",
 #                "file_uuid": "15fad895db1472c6b9167e0f6e01762a"
 #            },
 #            {
 #                "path": "hg19.exonic+intronic/barcode_matching/BeadBarcodes.txt",
-#                "checksum": "38de80f88dc451d95179db50ce5e21e5",
+#                "md5_checksum": "38de80f88dc451d95179db50ce5e21e5",
 #                "size": 2287908,
 #                "base_dir": "DATA_UPLOAD",
 #                "file_uuid": "250066e0b3bd019e646d6e83a842f4d0"
 #            },
 #            {
 #                "path": "hg19.exonic+intronic/barcode_matching/Puck_200903_02_unique_matched_illumina_barcodes.txt",
-#                "checksum": "12e143d90c07871c7993ce39602e93b4",
+#                "md5_checksum": "12e143d90c07871c7993ce39602e93b4",
 #                "size": 710310,
 #                "base_dir": "DATA_UPLOAD",
 #                "file_uuid": "5dd8f0a806a5d6eff9f5a64fa011691d"
