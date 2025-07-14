@@ -97,10 +97,11 @@ paths:
                                                    will be replaced by the generated file uuid before being stored.
                                                    This is useful in the case where the path to the file will include
                                                    the file uuid, such as for files uploaded via the ingest portal.
-                                base_dir- required: a specifier for the base directory where the file is stored
+                                   base_dir- required: a specifier for the base directory where the file is stored
                                                    valid values are: DATA_UPLOAD or INGEST_PORTAL_UPLOAD
                                                       
-                                checksum- optional: An MD5 checksum/hash of the file
+                                   md5_checksum- optional: An MD5 checksum/hash of the file
+                                   sha256_checksum- optional: An SHA-256 checksum/hash of the file
                                    size- optional: The size of the file as an integer'
       responses:
         '200':
@@ -238,9 +239,12 @@ paths:
                     path:
                       type: string
                       description: The local file system path including name of the file
-                    checksum:
+                    md5_checksum:
                       type: string
-                      description: The checksum of the file
+                      description: A 32-character hexadecimal string representation of the MD5 checksum of the file
+                    sha256_checksum:
+                      type: string
+                      description: A 64-character hexadecimal string representation of the SHA-256 checksum of the file
                     size:
                       type: string
                       description: Integer size of the file in bytes
