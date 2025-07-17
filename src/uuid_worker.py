@@ -506,16 +506,25 @@ class UUIDWorker:
                     return Response(response=f"The field checksum is deprecated and new values cannot be submitted."
                                              f" Use a format-specific checksum field instead."
                                     , status=400)
+                missing_checksum_list = []
                 if 'sha256_checksum' in fi:
                     if not re.fullmatch(pattern=SHA256_CHECKSUM_RE_PATTERN
                                         , string=fi['sha256_checksum']):
                         return Response(response=f"A 64 character hexadecimal string is expected for the sha256_checksum field."
                                         , status=400)
+                else:
+                    missing_checksum_list.append('sha256_checksum')
                 if 'md5_checksum' in fi:
                     if not re.fullmatch(pattern=MD5_CHECKSUM_RE_PATTERN
                                         , string=fi['md5_checksum']):
                         return Response(response=f"A 32 character hexadecimal string is expected for the md5_checksum field."
                                         , status=400)
+                else:
+                    missing_checksum_list.append('md5_checksum')
+                if missing_checksum_list:
+                    return (Response(response=f"Required fields missing from the file_info entry:"
+                                              f" {' '.join(missing_checksum_list)}"
+                                     , status= 400))
                 if not 'path' in fi or isBlank(fi['path']):
                     return (Response("The 'path' attribute is required for each file_info entry", 400))
                 if not 'base_dir' in fi or isBlank(fi['base_dir']):
