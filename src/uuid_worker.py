@@ -8,6 +8,7 @@ import secrets
 import time
 from contextlib import closing
 import json
+
 from app_db import DBConn
 import copy
 import re
@@ -23,6 +24,9 @@ MAX_GEN_IDS = 200
 APPID_ALPHA_CHARS = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Z']
 APPID_NUM_CHARS = ['2', '3', '4', '5', '6', '7', '8', '9']
 HEX_CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
+
+SHA256_CHECKSUM_RE_PATTERN = r'^[0-9a-fA-F]{64}$'
+MD5_CHECKSUM_RE_PATTERN = r'^[0-9a-fA-F]{32}$'
 
 from enum import Enum
 class DataIdType(Enum):
@@ -64,9 +68,9 @@ SQL_INSERT_ANCESTORS = \
 
 SQL_INSERT_FILES = \
     ("INSERT INTO files"
-     " (UUID, PATH, CHECKSUM, SIZE, BASE_DIR)"
+     " (UUID, PATH, SHA256_CHECKSUM, MD5_CHECKSUM, SIZE, BASE_DIR)"
      " VALUES"
-     " (%s, %s, %s, %s, %s)"
+     " (%s, %s, %s, %s, %s, %s)"
      )
 
 SQL_SELECT_ANCESTORS_OF_DESCENDANT_UUID = \
@@ -78,7 +82,8 @@ SQL_SELECT_ANCESTORS_OF_DESCENDANT_UUID = \
 SQL_SELECT_FILES_DESCENDED_FROM_ANCESTOR_UUID = \
     ("SELECT UUID AS file_uuid"
      "       ,PATH AS path"
-     "       ,CHECKSUM AS checksum"
+     "       ,SHA256_CHECKSUM AS sha256_checksum"
+     "       ,MD5_CHECKSUM AS md5_checksum"
      "       ,SIZE AS size"
      "       ,BASE_DIR AS base_dir"
      " FROM files"
@@ -89,7 +94,8 @@ SQL_SELECT_FILES_DESCENDED_FROM_ANCESTOR_UUID = \
 SQL_SELECT_FILES_INFO_INCLUDING_ANCESTOR = \
     ("SELECT UUID AS uuid"
      "       ,PATH AS path"
-     "       ,CHECKSUM AS checksum"
+     "       ,SHA256_CHECKSUM AS sha256_checksum"
+     "       ,MD5_CHECKSUM AS md5_checksum"
      "       ,SIZE AS size"
      "       ,BASE_DIR AS base_dir"
      "       ,ANCESTOR_UUID AS ancestor_uuid"
@@ -496,6 +502,29 @@ class UUIDWorker:
                     "number file_info list must contain the same number of entries as ids being generated " + str(nIds),
                     400))
             for fi in file_info:
+                if 'checksum' in fi:
+                    return Response(response=f"The field checksum is deprecated and new values cannot be submitted."
+                                             f" Use a format-specific checksum field instead."
+                                    , status=400)
+                missing_checksum_list = []
+                if 'sha256_checksum' in fi:
+                    if not re.fullmatch(pattern=SHA256_CHECKSUM_RE_PATTERN
+                                        , string=fi['sha256_checksum']):
+                        return Response(response=f"A 64 character hexadecimal string is expected for the sha256_checksum field."
+                                        , status=400)
+                else:
+                    missing_checksum_list.append('sha256_checksum')
+                if 'md5_checksum' in fi:
+                    if not re.fullmatch(pattern=MD5_CHECKSUM_RE_PATTERN
+                                        , string=fi['md5_checksum']):
+                        return Response(response=f"A 32 character hexadecimal string is expected for the md5_checksum field."
+                                        , status=400)
+                else:
+                    missing_checksum_list.append('md5_checksum')
+                if missing_checksum_list:
+                    return (Response(response=f"Required fields missing from the file_info entry:"
+                                              f" {' '.join(missing_checksum_list)}"
+                                     , status= 400))
                 if not 'path' in fi or isBlank(fi['path']):
                     return (Response("The 'path' attribute is required for each file_info entry", 400))
                 if not 'base_dir' in fi or isBlank(fi['base_dir']):
@@ -750,14 +779,20 @@ class UUIDWorker:
                         # relative path of after the <uuid> marker will be stored in the database on files.PATH.
                         relative_file_path = re.sub(r'^.+/<uuid>/',r'',file_path)
                         file_path = file_path.replace('<uuid>', insUuid)
-                        file_checksum = None
-                        file_size = None
+                        file_sha256_checksum = file_md5_checksum = file_size = None
                         if 'checksum' in file_info_array[info_idx]:
-                            file_checksum = file_info_array[info_idx]['checksum']
+                            self.logger.error(f"Expected checksum field to be rejected upon request."
+                                              f" Ignoring value {file_info_array[info_idx]['checksum']}"
+                                              f" during database write.")
+                        if 'sha256_checksum' in file_info_array[info_idx]:
+                            file_sha256_checksum = file_info_array[info_idx]['sha256_checksum']
+                        if 'md5_checksum' in file_info_array[info_idx]:
+                            file_md5_checksum = file_info_array[info_idx]['md5_checksum']
                         if 'size' in file_info_array[info_idx]:
                             file_size = file_info_array[info_idx]['size']
-                        file_info_ins_row = (insUuid, relative_file_path, file_checksum, file_size, base_dir_type)
-                        # file_info_ins_row = (insUuid, file_path, file_checksum)
+                        file_info_ins_row = (   insUuid, relative_file_path
+                                                , file_sha256_checksum, file_md5_checksum
+                                                , file_size, base_dir_type)
                         file_info_insert_vals.append(file_info_ins_row)
                         thisId['file_path'] = file_path
 
