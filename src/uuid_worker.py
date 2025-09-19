@@ -1027,9 +1027,9 @@ class UUIDWorker:
         return json.dumps(results, indent=4, sort_keys=True, default=str)
 
     def getFileIdInfo(self, fid):
-        if not isValidAppId(fid) or getDataIdType(fid) != DataIdType.UUID:
+        if not isValidAppId(fid) or getDataIdType(fid) != DataIdType.UUID or fid.startswith(EntityTypeUUIDPrefix.FILE.value) is False:
             # if isBlank(check_id) or len(check_id) != 32:
-            return Response("Invalid file id format.  32 digit hex only.", 400)
+            return Response(f"Invalid file id format.  32 digit hex only and should start with {EntityTypeUUIDPrefix.FILE.value}.", 400)
         # sql = "select uuid, path, checksum, size, base_dir, ancestor_uuid from files inner join ancestors on ancestors.descendant_uuid = files.uuid where uuid = '" + check_id + "'"
         check_id = (fid.strip(),)  # N.B. comma to force creation of tuple with one value, rather than scalar
 
