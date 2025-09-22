@@ -1027,7 +1027,7 @@ class UUIDWorker:
         return json.dumps(results, indent=4, sort_keys=True, default=str)
 
     def getFileIdInfo(self, fid):
-        if fid.upper().startswith(EntityTypeUUIDPrefix.FILE.value) is False:
+        if fid[:len(EntityTypeUUIDPrefix.FILE.value)].upper().startswith(EntityTypeUUIDPrefix.FILE.value) is False:
             return Response(f"File not found.", 404)
         if not isValidAppId(fid) or getDataIdType(fid) != DataIdType.UUID:
             # if isBlank(check_id) or len(check_id) != 32:
