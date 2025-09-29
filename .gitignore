@@ -11,6 +11,10 @@ reload_from_neo4j/reload.properties
 # Ignore docker env file
 hubmap-docker/.env
 
+# Ignore virtual environments
+env/
+venv/
+
 BUILD
 # mounted BUILD/VERSION file
 src/BUILD
@@ -50,3 +54,4 @@ log/*
 !log/README.md
 
 .idea/
+.vscode/
