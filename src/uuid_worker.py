@@ -5,7 +5,6 @@ import mysql.connector.errors
 from flask import Response
 import threading
 import secrets
-import time
 from contextlib import closing
 import json
 
@@ -534,6 +533,34 @@ class UUIDWorker:
                 base_dir = fi['base_dir'].strip().upper()
                 if not base_dir in BASE_DIR_TYPES:
                     return (Response("valid base_dir values are " + " ".join(BASE_DIR_TYPES), 400))
+
+            # Check that there's no duplicate file paths in the file_info
+            ancestor_paths = [
+                (ancestor_id, fi['path']) for ancestor_id in ancestor_ids for fi in file_info
+            ]
+            if len(ancestor_paths) != len(set(ancestor_paths)):
+                return Response(
+                    response="The field file_info cannot contain duplicate paths",
+                    status=400
+                )
+
+            # Check that none of the file paths in the file_info already exist for the specified
+            # ancestor(s)
+            try:
+                existing_ancestor_path = self.get_existing_file_ancestor_paths(ancestor_paths)
+                if len(existing_ancestor_path) > 0:
+                    msg = "; ".join([
+                        f"parent_id: {ancestor_id}, path: {path}"
+                        for (ancestor_id, path) in existing_ancestor_path
+                    ])
+                    return Response(response=f"UUID(s) for {msg} already exist", status=409)
+            except Exception as e:
+                self.logger.error(
+                    f"Unexpected error checking for existing file UUIDs - '{str(e)}'.",
+                    exc_info=True
+                )
+                return Response(response="An unknown error occured", status=500)
+
         # Verify all of the ancestor UUIDs exist in the database. Form an error response if
         # an Exception is raised.
         try:
@@ -1210,3 +1237,20 @@ class UUIDWorker:
                 self.logger.error(f"Error getting presigned URL for obj_key={obj_key}.")
                 self.logger.error(e, exc_info=True)
                 return Response(f"Unexpected error: {str(e)}", 500)
+
+    def get_existing_file_ancestor_paths(self, ancestor_path_tuples):
+        if not ancestor_path_tuples or len(ancestor_path_tuples) == 0:
+            return []
+
+        placeholders = ','.join(['(%s, %s)'] * len(ancestor_path_tuples))
+        query = (
+            f"SELECT a.ANCESTOR_UUID, f.PATH AS file_uuids FROM files f "
+            f"INNER JOIN ancestors a ON a.DESCENDANT_UUID = f.UUID "
+            f"WHERE (a.ANCESTOR_UUID, f.PATH) IN ({placeholders})"
+        )
+
+        with closing(self.hmdb.getDBConnection()) as dbConn:
+            with closing(dbConn.cursor(prepared=True)) as curs:
+                args = [item for tup in ancestor_path_tuples for item in tup]
+                curs.execute(query, args)
+                return curs.fetchall()
