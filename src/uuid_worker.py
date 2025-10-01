@@ -547,9 +547,13 @@ class UUIDWorker:
             # Check that none of the file paths in the file_info already exist for the specified
             # ancestor(s)
             try:
-                file_uuids = self.get_existing_file_ancestor_paths(ancestor_paths)
-                if len(file_uuids) > 0:
-                    return Response(response="UUID for this file exists already", status=409)
+                existing_ancestor_path = self.get_existing_file_ancestor_paths(ancestor_paths)
+                if len(existing_ancestor_path) > 0:
+                    msg = "; ".join([
+                        f"parent_id: {ancestor_id}, path: {path}"
+                        for (ancestor_id, path) in existing_ancestor_path
+                    ])
+                    return Response(response=f"UUID(s) for {msg} already exist", status=409)
             except Exception as e:
                 self.logger.error(
                     f"Unexpected error checking for existing file UUIDs - '{str(e)}'.",
@@ -1238,7 +1242,7 @@ class UUIDWorker:
 
         placeholders = ','.join(['(%s, %s)'] * len(ancestor_path_tuples))
         query = (
-            f"SELECT f.UUID AS file_uuids FROM files f "
+            f"SELECT a.ANCESTOR_UUID, f.PATH AS file_uuids FROM files f "
             f"INNER JOIN ancestors a ON a.DESCENDANT_UUID = f.UUID "
             f"WHERE (a.ANCESTOR_UUID, f.PATH) IN ({placeholders})"
         )
@@ -1247,5 +1251,4 @@ class UUIDWorker:
             with closing(dbConn.cursor(prepared=True)) as curs:
                 args = [item for tup in ancestor_path_tuples for item in tup]
                 curs.execute(query, args)
-                result = curs.fetchall()
-                return [row[0] for row in result]
+                return curs.fetchall()
