@@ -4,17 +4,6 @@
 echo
 echo "==================== UUID-API ===================="
 
-# The `absent_or_newer` checks if the copied src at docker/some-api/src directory exists 
-# and if the source src directory is newer. 
-# If both conditions are true `absent_or_newer` writes an error message 
-# and causes script to exit with an error code.
-function absent_or_newer() {
-    if  [ \( -e $1 \) -a \( $2 -nt $1 \) ]; then
-        echo "$1 is out of date"
-        exit -1
-    fi
-}
-
 function get_dir_of_this_script() {
     # This function sets DIR to the directory in which this script itself is found.
     # Thank you https://stackoverflow.com/questions/59895/how-to-get-the-source-directory-of-a-bash-script-from-within-the-script-itself
@@ -50,69 +39,26 @@ function export_version() {
     echo "UUID_API_VERSION: $UUID_API_VERSION"
 }
 
-
-if [[ "$1" != "check" && "$1" != "config" && "$1" != "build" && "$1" != "start" && "$1" != "stop" && "$1" != "down" ]]; then
-    echo "Unknown command '$1', specify one of the following: check|config|build|start|stop|down"
+if [[ "$1" != "start" && "$1" != "stop" && "$1" != "down" ]]; then
+    echo "Unknown command '$1', specify one of the following: start|stop|down"
 else
     # Always show the script dir
     get_dir_of_this_script
 
     # Always export and show the version
     export_version
-    
+
     # Always show the build in case branch changed or new commits
     generate_build_version
 
     # Print empty line
     echo
 
-    if [ "$1" = "check" ]; then
-        # Bash array
-        config_paths=(
-            '../src/instance/app.cfg'
-        )
-
-        for pth in "${config_paths[@]}"; do
-            if [ ! -e $pth ]; then
-                echo "Missing file (relative path to DIR of script) :$pth"
-                exit -1
-            fi
-        done
-
-        absent_or_newer uuid-api/src ../src
-
-        echo 'Checks complete, all good :)'
-    elif [ "$1" = "config" ]; then
-        docker compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api config
-    elif [ "$1" = "build" ]; then
-        # Delete the copied source code dir if exists
-        if [ -d "uuid-api/src" ]; then
-            rm -rf uuid-api/src
-        fi
-
-        # Copy over the src folder
-        cp -r ../src uuid-api/
-
-        # Delete old VERSION and BUILD files if found
-        if [ -f "uuid-api/VERSION" ]; then
-            rm -rf uuid-api/VERSION
-        fi
-        
-        if [ -f "uuid-api/BUILD" ]; then
-            rm -rf uuid-api/BUILD
-        fi
-        
-        # Copy over the VERSION and BUILD files
-        cp ../VERSION uuid-api
-        cp ../BUILD uuid-api
-
-        docker compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api build
-    elif [ "$1" = "start" ]; then
-        docker compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api up -d
+    if [ "$1" = "start" ]; then
+        docker compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api up -d
     elif [ "$1" = "stop" ]; then
-        docker compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api stop
+        docker compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api stop
     elif [ "$1" = "down" ]; then
-        docker compose -f docker-compose.yml -f docker-compose.development.yml -p uuid-api down
+        docker compose -f docker-compose.yml -f docker-compose.deployment.yml -p uuid-api down
     fi
 fi
-

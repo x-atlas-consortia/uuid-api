@@ -9,3 +9,7 @@ README.md
 
 # Ignore the flask instance folder
 src/instance
+
+# Ignore Python cache directories
+__pycache__/
+**/__pycache__/

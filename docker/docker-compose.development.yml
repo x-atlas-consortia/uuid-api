@@ -1,20 +1,18 @@
-version: "3.7"
-
 services:
-  
+
   uuid-api:
     build: 
       context: ./uuid-api
-      # Uncomment if tesitng against a specific branch of commons other than the PyPI package
-      # Will also need to use the 'git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons'
-      # in src/requirements.txt accordingly
       args:
-        # The commons github branch to be used during image build (default to main if not set or null)
+        # The commons github branch to be used during image build (default to master if not set or null)
         - COMMONS_BRANCH=${COMMONS_BRANCH:-main}
+        - HOST_GID=${HOST_GID:-1001}
+        - HOST_UID=${HOST_UID:-1001}
+        - IMAGE_USER=${IMAGE_USER:-hubmap}
     # Build the image with name and tag
     # Exit with an error message containing err if unset or empty in the environment
-    image: sennet/uuid-api:${UUID_API_VERSION:?err}
-    volumes:  
+    image: ${CONSORTIUM}/uuid-api:${UUID_API_VERSION:?err}
+    volumes:
       # Mount the VERSION file and BUILD file 
       - "../VERSION:/usr/src/app/VERSION" 
       - "../BUILD:/usr/src/app/BUILD" 
