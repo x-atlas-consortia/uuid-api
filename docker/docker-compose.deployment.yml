@@ -2,6 +2,4 @@ services:
   
   uuid-api: 
     # Use the published image and tag from DockerHub
-    image: hubmap/uuid-api:${UUID_API_VERSION:?err}
-
-
+    image: ${CONSORTIUM}/uuid-api:${UUID_API_VERSION:?err}

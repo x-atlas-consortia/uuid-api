@@ -21,6 +21,13 @@ src/BUILD
 src/VERSION
 
 # Ignore docker copied files/folders
+docker/uuid-api/BUILD
+docker/uuid-api/VERSION
+docker/uuid-api/src
+docker/uuid-api/log
+docker/*.env
+!docker/example.env
+
 hubmap-docker/uuid-api/BUILD
 hubmap-docker/uuid-api/VERSION
 hubmap-docker/uuid-api/src
