@@ -28,16 +28,6 @@ docker/uuid-api/log
 docker/*.env
 !docker/example.env
 
-hubmap-docker/uuid-api/BUILD
-hubmap-docker/uuid-api/VERSION
-hubmap-docker/uuid-api/src
-hubmap-docker/uuid-api/log
-
-sennet-docker/uuid-api/BUILD
-sennet-docker/uuid-api/VERSION
-sennet-docker/uuid-api/src
-sennet-docker/uuid-api/log
-
 # Ignore backup files created by MySQL Workbench
 sql/*.bak
 

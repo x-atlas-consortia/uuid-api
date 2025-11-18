@@ -26,17 +26,17 @@ RUN apt-get update -y && \
 RUN \
     # import an official nginx signing key
     curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
-    | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null && \
+        | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null && \
     # verify the signature contains the full fingerprint "573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62", if not then fail
     gpg --dry-run --quiet --no-keyring --import --import-options import-show /usr/share/keyrings/nginx-archive-keyring.gpg | grep -q "573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62" || \
     (echo "Signature verification failed!" && exit 1) && \
-    # add the mainline nginx repository
+    # add the stable nginx repository
     echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
-    http://nginx.org/packages/mainline/debian `lsb_release -cs` nginx" \
-    | tee /etc/apt/sources.list.d/nginx.list && \
-    # set up repository pinning to prefer nginx mainline
+    http://nginx.org/packages/debian `lsb_release -cs` nginx" \
+        | tee /etc/apt/sources.list.d/nginx.list && \
+    # set up repository pinning to prefer nginx stable
     printf "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
-    | tee /etc/apt/preferences.d/99nginx >/dev/null && \
+        | tee /etc/apt/preferences.d/99nginx >/dev/null && \
     apt-get update -y && \
     apt-get install -y nginx
 
