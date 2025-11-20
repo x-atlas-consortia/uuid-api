@@ -17,7 +17,7 @@ APP_BASE_ID = 'base_id'
 
 BASE_DIR_TYPES = ['DATA_UPLOAD', 'INGEST_PORTAL_UPLOAD']
 # Entity types which have a uuids_attributes.BASE_ID associated with them
-BASE_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'SOURCE', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR', 'PUBLICATION']]
+BASE_ID_ENTITY_TYPES = ['ACTIVITY', 'SAMPLE', 'SOURCE', 'DATASET', 'COLLECTION', 'UPLOAD', 'REFERENCE', 'AVR', 'PUBLICATION']
 # A full list of values found in uuids.ENTITY_TYPE, currently partitioned into those with a BASE_ID and those without.
 KNOWN_ENTITY_TYPES = BASE_ID_ENTITY_TYPES + ['FILE', 'LAB']
 ANCESTOR_REQUIRED_ENTITY_TYPES = ['SAMPLE', 'SOURCE', 'DATASET', 'FILE', 'UPLOAD', 'PUBLICATION']
