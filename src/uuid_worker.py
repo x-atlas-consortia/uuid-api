@@ -207,6 +207,13 @@ SQL_INSERT_LAB_WITH_TMC_PREFIX = \
      " (%s, %s, %s)"
      )
 
+SQL_SELECT_DISTINCT_ANCESTOR_FILE_PATHS_PREFIX = \
+    ("SELECT DISTINCT a.ANCESTOR_UUID, f.PATH AS file_uuids FROM files f"
+     " INNER JOIN ancestors a ON a.DESCENDANT_UUID = f.UUID"
+     " WHERE (a.ANCESTOR_UUID, f.PATH) IN (%s)"
+    )
+
+
 def startsWithComponentPrefix(app_id):
     tidl = app_id.strip().lower()
     if tidl.startswith('test') or tidl.startswith('van') or tidl.startswith('ufl') or tidl.startswith(
@@ -1243,11 +1250,7 @@ class UUIDWorker:
             return []
 
         placeholders = ','.join(['(%s, %s)'] * len(ancestor_path_tuples))
-        query = (
-            f"SELECT a.ANCESTOR_UUID, f.PATH AS file_uuids FROM files f "
-            f"INNER JOIN ancestors a ON a.DESCENDANT_UUID = f.UUID "
-            f"WHERE (a.ANCESTOR_UUID, f.PATH) IN ({placeholders})"
-        )
+        query = SQL_SELECT_DISTINCT_ANCESTOR_FILE_PATHS_PREFIX % placeholders
 
         with closing(self.hmdb.getDBConnection()) as dbConn:
             with closing(dbConn.cursor(prepared=True)) as curs:
