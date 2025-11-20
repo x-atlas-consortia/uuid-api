@@ -41,7 +41,6 @@ RUN \
     apt-get install -y nginx
 
 COPY . .
-COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Install python dependencies
 RUN pip install --upgrade pip setuptools wheel && \
@@ -68,12 +67,8 @@ RUN touch /var/run/nginx.pid && \
     chown -R ${IMAGE_USER}:${IMAGE_USER} /run/nginx.pid && \
     mv nginx/nginx.conf /etc/nginx/nginx.conf && \
     rm -rf nginx && \
-    rm entrypoint.sh src/requirements.txt && \
-    chmod +x /usr/local/bin/entrypoint.sh && \
     chown -R ${IMAGE_USER}:${IMAGE_USER} /usr/src/app
 
 USER ${IMAGE_USER}
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["./start.sh"]
