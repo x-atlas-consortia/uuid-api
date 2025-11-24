@@ -52,6 +52,17 @@ jobs:
             sleep 2
           done
 
+      - name: Debug MySQL container
+        run: |
+          echo "=== docker ps ==="
+          docker ps --filter "name=mysql-test" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"
+          echo "=== container inspect ==="
+          docker inspect mysql-test || true
+          echo "=== recent logs ==="
+          docker logs --tail 200 mysql-test || true
+          echo "=== mysqld listening ports (inside container) ==="
+          docker exec mysql-test bash -c "ss -lntp || netstat -lntp" || true
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
