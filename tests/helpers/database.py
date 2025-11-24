@@ -37,7 +37,7 @@ def wait_for_mysql(host, name, user, password, timeout=60, interval=1):
 
 @pytest.fixture(scope="session")
 def db_session():
-    mysql_host = "localhost"
+    mysql_host = "127.0.0.1"
     mysql_name = "sn_uuid"
     mysql_username = "uuid_user"
     mysql_password = "uuid_password"
