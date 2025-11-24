@@ -36,8 +36,6 @@ jobs:
             --health-interval=5s \
             --health-timeout=2s \
             --health-retries=30 \
-            -v "${{ github.workspace }}/sql":/docker-entrypoint-initdb.d:rw \
-            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
             mysql:8.0-debian
 
       - name: Wait for MySQL
@@ -51,17 +49,6 @@ jobs:
             fi
             sleep 2
           done
-
-      - name: Debug MySQL container
-        run: |
-          echo "=== docker ps ==="
-          docker ps --filter "name=mysql-test" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"
-          echo "=== container inspect ==="
-          docker inspect mysql-test || true
-          echo "=== recent logs ==="
-          docker logs --tail 200 mysql-test || true
-          echo "=== mysqld listening ports (inside container) ==="
-          docker exec mysql-test bash -c "ss -lntp || netstat -lntp" || true
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
