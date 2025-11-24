@@ -27,20 +27,29 @@ jobs:
       - name: Start MySQL container
         run: |
           docker run -d --name mysql-test \
-            -p 3306:3306 \
             -e MYSQL_DATABASE=sn_uuid \
             -e MYSQL_USER=uuid_user \
             -e MYSQL_PASSWORD=uuid_password \
             -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
-            -v ${{ github.workspace }}/sql:/docker-entrypoint-initdb.d \
-            -v ${{ github.workspace }}/tests/config/my.cnf:/etc/mysql/my.cnf:ro \
+            -p 3306:3306 \
+            --health-cmd='mysqladmin ping --silent' \
+            --health-interval=5s \
+            --health-timeout=2s \
+            --health-retries=30 \
+            -v "${{ github.workspace }}/sql":/docker-entrypoint-initdb.d:rw \
+            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
             mysql:8.0-debian
 
-          # wait for MySQL
+      - name: Wait for MySQL
+        run: |
           for i in $(seq 1 60); do
-            docker exec mysql-test mysql -uuuid_user -puuid_password -e "SELECT 1" >/dev/null 2>&1 && break
-            echo "Waiting for MySQL ($i/60)..."
-            sleep 1
+            status=$(docker inspect --format='{{.State.Health.Status}}' mysql-test 2>/dev/null || echo "")
+            echo "mysql-test health=$status"
+            if [ "$status" = "healthy" ]; then
+              echo "MySQL is healthy"
+              break
+            fi
+            sleep 2
           done
 
       - name: Set up Python ${{ matrix.python-version }}
