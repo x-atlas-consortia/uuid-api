@@ -33,8 +33,15 @@ jobs:
             -e MYSQL_PASSWORD=uuid_password \
             -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
             -v ${{ github.workspace }}/sql:/docker-entrypoint-initdb.d \
-            -v ${{ github.workspace }}/tests/config:/etc/mysql:ro \
+            -v ${{ github.workspace }}/tests/config/my.cnf:/etc/mysql/my.cnf:ro \
             mysql:8.0-debian
+
+          # wait for MySQL
+          for i in $(seq 1 60); do
+            docker exec mysql-test mysql -uuuid_user -puuid_password -e "SELECT 1" >/dev/null 2>&1 && break
+            echo "Waiting for MySQL ($i/60)..."
+            sleep 1
+          done
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
