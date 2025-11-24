@@ -20,34 +20,38 @@ jobs:
       matrix:
         python-version: [3.13]
 
-    services:
-      mysql-test:
-        image: mysql:8.0-debian
-        volumes:
-          - ${{ github.workspace }}/sql:/docker-entrypoint-initdb.d
-          - ${{ github.workspace }}/tests/config:/etc/mysql
-        env:
-          MYSQL_DATABASE: sn_uuid
-          MYSQL_USER: uuid_user
-          MYSQL_PASSWORD: uuid_password
-          MYSQL_RANDOM_ROOT_PASSWORD: yes
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-          --name mysql-test
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Restart MySQL service
-        uses: docker://docker
-        with:
-          args: docker restart mysql-test
+      - name: Start MySQL container
+        run: |
+          docker run -d --name mysql-test \
+            -e MYSQL_DATABASE=sn_uuid \
+            -e MYSQL_USER=uuid_user \
+            -e MYSQL_PASSWORD=uuid_password \
+            -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
+            -p 3306:3306 \
+            -v "${{ github.workspace }}/sql":/docker-entrypoint-initdb.d:rw \
+            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
+            --network=job.container.network \
+            --health-cmd='mysqladmin ping --silent' \
+            --health-interval=5s \
+            --health-timeout=2s \
+            --health-retries=30 \
+            mysql:8.0-debian
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 60); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' mysql-test 2>/dev/null || echo "")
+            echo "mysql-test health=$status"
+            if [ "$status" = "healthy" ]; then
+              echo "MySQL is healthy"
+              break
+            fi
+            sleep 2
+          done
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
