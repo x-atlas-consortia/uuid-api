@@ -21,15 +21,12 @@ src/BUILD
 src/VERSION
 
 # Ignore docker copied files/folders
-hubmap-docker/uuid-api/BUILD
-hubmap-docker/uuid-api/VERSION
-hubmap-docker/uuid-api/src
-hubmap-docker/uuid-api/log
-
-sennet-docker/uuid-api/BUILD
-sennet-docker/uuid-api/VERSION
-sennet-docker/uuid-api/src
-sennet-docker/uuid-api/log
+docker/uuid-api/BUILD
+docker/uuid-api/VERSION
+docker/uuid-api/src
+docker/uuid-api/log
+docker/*.env
+!docker/example.env
 
 # Ignore backup files created by MySQL Workbench
 sql/*.bak
