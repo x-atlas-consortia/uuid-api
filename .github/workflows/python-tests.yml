@@ -32,9 +32,8 @@ jobs:
             -e MYSQL_PASSWORD=uuid_password \
             -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
             -p 3306:3306 \
-            -v "${{ github.workspace }}/sql":/docker-entrypoint-initdb.d:rw \
-            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
-            --network=job.container.network \
+            -v ${{ github.workspace }}/sql:/docker-entrypoint-initdb.d:rw \
+            -v ${{ github.workspace }}/tests/config/my.cnf:/etc/mysql/my.cnf:ro \
             --health-cmd='mysqladmin ping --silent' \
             --health-interval=5s \
             --health-timeout=2s \
