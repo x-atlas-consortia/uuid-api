@@ -33,8 +33,8 @@ docker run -d --name mysql-test \
   -e MYSQL_USER=uuid_user \
   -e MYSQL_PASSWORD=uuid_password \
   -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
-  -v $SCRIPT_DIR/sql:/docker-entrypoint-initdb.d \
-  -v $SCRIPT_DIR/tests/config:/etc/mysql:ro \
+  -v $SCRIPT_DIR/tests/config/uuid-api.sql:/docker-entrypoint-initdb.d/uuid-api.sql:ro \
+  -v $SCRIPT_DIR/tests/config/my.cnf:/etc/mysql/my.cnf:ro \
   mysql:8.0-debian
 
 echo "Running tests"

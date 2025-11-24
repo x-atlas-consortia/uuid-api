@@ -40,18 +40,6 @@ jobs:
             --health-retries=30 \
             mysql:8.0-debian
 
-      - name: Wait for MySQL
-        run: |
-          for i in $(seq 1 60); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' mysql-test 2>/dev/null || echo "")
-            echo "mysql-test health=$status"
-            if [ "$status" = "healthy" ]; then
-              echo "MySQL is healthy"
-              break
-            fi
-            sleep 2
-          done
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -65,7 +53,7 @@ jobs:
 
       - name: Setup test config file
         run: |
-          cp tests/config/app.test.cfg src/instance/app.cfg
+          cp ${{ github.workspace }}/tests/config/app.test.cfg ${{ github.workspace }}/src/instance/app.cfg
 
       - name: Test with pytest
         run: |
