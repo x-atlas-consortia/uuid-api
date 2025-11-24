@@ -36,6 +36,7 @@ jobs:
             --health-interval=5s \
             --health-timeout=2s \
             --health-retries=30 \
+            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
             mysql:8.0-debian
 
       - name: Wait for MySQL
