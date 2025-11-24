@@ -24,9 +24,8 @@ jobs:
       mysql-test:
         image: mysql:8.0-debian
         volumes:
-          - ${{ github.workspace }}/sql/00-test-sanitize.sh:/docker-entrypoint-initdb.d/00-test-sanitize.sh
-          - ${{ github.workspace }}/sql/uuid-api.sql:/docker-entrypoint-initdb.d/uuid-api.sql
-          - ${{ github.workspace }}/tests/config/my.cnf:/etc/mysql/my.cnf
+          - ${{ github.workspace }}/sql:/docker-entrypoint-initdb.d
+          - ${{ github.workspace }}/tests/config:/etc/mysql
         env:
           MYSQL_DATABASE: sn_uuid
           MYSQL_USER: uuid_user
