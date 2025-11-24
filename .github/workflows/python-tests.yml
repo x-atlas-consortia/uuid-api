@@ -24,6 +24,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Make init scripts executable
+        run: |
+          chmod +x "${{ github.workspace }}/sql/"*.sh || true
+
       - name: Start MySQL container
         run: |
           docker run -d --name mysql-test \
@@ -36,9 +40,8 @@ jobs:
             --health-interval=5s \
             --health-timeout=2s \
             --health-retries=30 \
-            -v "${{ github.workspace }}/sql/00-test-sanitize.sh":/docker-entrypoint-initdb.d/00-test-sanitize.sh:ro \
-            -v "${{ github.workspace }}/sql/uuid-api.sql":/docker-entrypoint-initdb.d/uuid-api.sql \
-            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
+            -v "${{ github.workspace }}/sql":/docker-entrypoint-initdb.d \
+            -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf \
             mysql:8.0-debian
 
       - name: Wait for MySQL
