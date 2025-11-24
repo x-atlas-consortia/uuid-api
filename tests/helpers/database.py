@@ -263,6 +263,8 @@ def create_files(cnx, files):
 def create_file(cnx, file):
     with cnx.cursor(dictionary=True) as cursor:
         data = generate_uuid_item()
+        # Modify the generated uuid to denote a FILE entity
+        data["uuid"] = f"ffff{data['uuid'][4:]}"
         data["entity_type"] = "FILE"
 
         # Insert the uuid row

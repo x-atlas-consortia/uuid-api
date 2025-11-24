@@ -111,6 +111,39 @@ def test_get_file_by_id(app, db_session):
         assert data["uuid"] == file["uuid"]
 
 
+def test_get_file_info_by_id(app, db_session):
+    """Test retrieving File UUID information by UUID value via the GET /file-id/<uuid> endpoint"""
+
+    prov = create_provenance(db_session, ["source", "organ", "block", "section", "dataset"])
+    file = create_file(
+        db_session,
+        {
+            "path": "basepath/test_file.txt",
+            "size": 12345,
+            "sha256_checksum": calculate_checksum("basepath/test_file.txt", "sha256"),
+            "md5_checksum": calculate_checksum("basepath/test_file.txt", "md5"),
+            "parent_uuid": prov["dataset"]["uuid"],
+        },
+    )
+
+    with app.test_client() as client:
+        res = client.get(
+            f"/file-id/{file['uuid']}",
+            headers={"Authorization": f"Bearer {AUTH_TOKEN}"},
+        )
+        assert res.status_code == 200
+        data = res.get_json()
+
+        assert data["ancestor_uuid"] == prov["dataset"]["uuid"]
+        assert data["base_dir"] == "DATA_UPLOAD"
+        assert data["hm_uuid"] == file["uuid"]
+        assert data["md5_checksum"] == file["md5_checksum"]
+        assert data["path"] == file["path"]
+        assert data["sha256_checksum"] == file["sha256_checksum"]
+        assert data["size"] == file["size"]
+        assert data["uuid"] == file["uuid"]
+
+
 def test_get_files_for_dataset(app, db_session):
     """Test retrieving all File UUIDs for a Dataset via the GET /<dataset_uuid>/files endpoint"""
 
@@ -170,10 +203,27 @@ def test_uuid_exists(app, db_session, exists):
         item_uuid = uuid.uuid4().hex
 
     with app.test_client() as client:
-        # Test existing UUID
         res = client.get(
             f"/uuid/{item_uuid}/exists",
             headers={"Authorization": f"Bearer {AUTH_TOKEN}"},
         )
         assert res.status_code == 200
         assert res.text == "true" if exists else "false"
+
+
+def test_uuid_ancestors(app, db_session):
+    """Test retrieving ancestors of a UUID via the GET /<uuid>/ancestors endpoint"""
+
+    prov = create_provenance(db_session, ["source", "organ", "block", "section", "dataset"])
+    dataset_uuid = prov["dataset"]["uuid"]
+
+    with app.test_client() as client:
+        res = client.get(
+            f"/{dataset_uuid}/ancestors",
+            headers={"Authorization": f"Bearer {AUTH_TOKEN}"},
+        )
+        assert res.status_code == 200
+        data = res.get_json()
+
+        assert len(data) == 1
+        assert data[0] == prov["section"]["uuid"]
