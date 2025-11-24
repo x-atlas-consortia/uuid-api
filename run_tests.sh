@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # check if the mysql-test docker container is running and stop it
 if [ "$(docker ps -q -f name=mysql-test)" ]; then
     echo "Stopping the existing mysql-test container"

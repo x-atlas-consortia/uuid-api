@@ -36,6 +36,8 @@ jobs:
             --health-interval=5s \
             --health-timeout=2s \
             --health-retries=30 \
+            -v "${{ github.workspace }}/sql/00-test-sanitize.sh":/docker-entrypoint-initdb.d/00-test-sanitize.sh:ro \
+            -v "${{ github.workspace }}/sql/uuid-api.sql":/docker-entrypoint-initdb.d/uuid-api.sql \
             -v "${{ github.workspace }}/tests/config/my.cnf":/etc/mysql/my.cnf:ro \
             mysql:8.0-debian
 
