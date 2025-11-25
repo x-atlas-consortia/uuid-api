@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import time
 import logging
 from uuid_worker import UUIDWorker
 import json
@@ -46,11 +45,10 @@ try:
     worker = UUIDWorker(app_config=app.config)
     logger.info("UUIDWorker instantiated using app.cfg setting.")
 except Exception as e:
-    logger.critical(f"Unable to instantiate a UUIDWorker during startup.")
+    logger.critical("Unable to instantiate a UUIDWorker during startup.")
     print("Error instantiating a UUIDWorker during startup.")
     print(str(e))
     logger.error(e, exc_info=True)
-    print("Check the log file for further information: " + LOG_FILE_NAME)
 
 logger.info('')
 logger.info('')
@@ -312,4 +310,3 @@ if __name__ == "__main__":
         print("Error during starting debug server.")
         print(str(e))
         logger.error(e, exc_info=True)
-        print("Check the log file for further information: " + LOG_FILE_NAME)
