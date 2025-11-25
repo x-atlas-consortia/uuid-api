@@ -7,11 +7,16 @@ from flask import Response
 AUTH_TOKEN = "test_token"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def auth():
     globus_group_info = {"by_id": {GROUP_ID: GROUP}}
 
     auth_mock = MagicMock()
+
+    # By default, tests have read and write privileges, can be overridden in individual tests
+    auth_mock.read_privs = True
+    auth_mock.write_privs = True
+
     auth_mock.get_globus_groups_info.return_value = globus_group_info
     auth_mock.getAuthorizationTokens = MagicMock(side_effect=get_authorization_tokens)
     auth_mock.getProcessSecret.return_value = "super_process_secret"
@@ -19,8 +24,12 @@ def auth():
     auth_mock.getUserTokenFromRequest = MagicMock(side_effect=get_user_token_from_request)
     auth_mock.getUserInfoUsingRequest = MagicMock(side_effect=get_user_info_using_request)
     auth_mock.getUserInfo = MagicMock(side_effect=get_user_info)
-    auth_mock.has_read_privs = MagicMock(side_effect=has_read_privs)
-    auth_mock.has_write_privs = MagicMock(side_effect=has_write_privs)
+    auth_mock.has_read_privs = MagicMock(
+        side_effect=lambda token: auth_mock.read_privs if token == AUTH_TOKEN else False
+    )
+    auth_mock.has_write_privs = MagicMock(
+        side_effect=lambda token: auth_mock.write_privs if token == AUTH_TOKEN else False
+    )
 
     with (
         patch("hubmap_commons.hm_auth.AuthHelper.configured_instance", return_value=auth_mock),
@@ -59,11 +68,3 @@ def get_user_info(token, getGroups=True):
         return USER
     else:
         return None
-
-
-def has_read_privs(token):
-    return token == AUTH_TOKEN
-
-
-def has_write_privs(token):
-    return token == AUTH_TOKEN
