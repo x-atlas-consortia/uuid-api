@@ -2,7 +2,7 @@ import re
 
 from tests.helpers import GROUP_ID, USER, calculate_checksum
 from tests.helpers.auth import AUTH_TOKEN
-from tests.helpers.database import create_provenance, get_uuid
+from tests.helpers.database import create_file, create_provenance, get_uuid
 
 
 def test_create_source_uuid(app, db_session):
@@ -214,6 +214,44 @@ def test_create_file_uuid(app, db_session):
         assert db_entry["user_email"] == USER["email"]
 
 
+def test_create_file_uuid_path_exists(app, db_session):
+    """Test creating a File UUID via the POST /uuid endpoint fails when the file path already
+    exists"""
+
+    prov = create_provenance(db_session, ["source", "organ", "block", "section", "dataset"])
+    dataset = prov["dataset"]
+    file = create_file(
+        db_session,
+        {
+            "path": "basepath/test_file.txt",
+            "size": 12345,
+            "sha256_checksum": calculate_checksum("basepath/test_file.txt", "sha256"),
+            "md5_checksum": calculate_checksum("basepath/test_file.txt", "md5"),
+            "parent_uuid": prov["dataset"]["uuid"],
+        },
+    )
+
+    with app.test_client() as client:
+        res = client.post(
+            "/uuid",
+            json={
+                "entity_type": "FILE",
+                "parent_ids": [dataset["uuid"]],
+                "file_info": [
+                    {
+                        "path": file["path"],
+                        "sha256_checksum": file["sha256_checksum"],
+                        "md5_checksum": file["md5_checksum"],
+                        "size": file["size"],
+                        "base_dir": "DATA_UPLOAD",
+                    }
+                ],
+            },
+            headers={"Authorization": f"Bearer {AUTH_TOKEN}"},
+        )
+        assert res.status_code == 409
+
+
 def test_create_multiple_file_uuids(app, db_session):
     """Test creating multiple File UUIDs via the POST /uuid endpoint"""
 
@@ -267,3 +305,17 @@ def test_create_multiple_file_uuids(app, db_session):
             assert db_entry["entity_type"] == "FILE"
             assert db_entry["user_id"] == USER["sub"]
             assert db_entry["user_email"] == USER["email"]
+
+
+def test_create_uuid_no_write(app, auth):
+    """Test that creating a UUID via the POST /uuid endpoint fails without write privileges"""
+
+    auth.write_privs = False
+
+    with app.test_client() as client:
+        res = client.post(
+            "/uuid",
+            json={"entity_type": "Source", "parent_ids": [GROUP_ID]},
+            headers={"Authorization": f"Bearer {AUTH_TOKEN}"},
+        )
+        assert res.status_code == 403
