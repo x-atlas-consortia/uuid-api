@@ -37,7 +37,7 @@ def wait_for_mysql(host, name, user, password, timeout=60, interval=1):
 
 @pytest.fixture(scope="session")
 def db_session():
-    mysql_host = "localhost"
+    mysql_host = "127.0.0.1"
     mysql_name = "sn_uuid"
     mysql_username = "uuid_user"
     mysql_password = "uuid_password"
@@ -263,6 +263,8 @@ def create_files(cnx, files):
 def create_file(cnx, file):
     with cnx.cursor(dictionary=True) as cursor:
         data = generate_uuid_item()
+        # Modify the generated uuid to denote a FILE entity
+        data["uuid"] = f"ffff{data['uuid'][4:]}"
         data["entity_type"] = "FILE"
 
         # Insert the uuid row

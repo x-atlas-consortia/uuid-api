@@ -27,13 +27,17 @@ jobs:
       - name: Start MySQL container
         run: |
           docker run -d --name mysql-test \
-            -p 3306:3306 \
             -e MYSQL_DATABASE=sn_uuid \
             -e MYSQL_USER=uuid_user \
             -e MYSQL_PASSWORD=uuid_password \
             -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
-            -v ${{ github.workspace }}/sql:/docker-entrypoint-initdb.d \
-            -v ${{ github.workspace }}/tests/config:/etc/mysql:ro \
+            -p 3306:3306 \
+            -v ${{ github.workspace }}/tests/config/uuid-api.sql:/docker-entrypoint-initdb.d/uuid-api.sql:ro \
+            -v ${{ github.workspace }}/tests/config/my.cnf:/etc/mysql/my.cnf:ro \
+            --health-cmd='mysqladmin ping --silent' \
+            --health-interval=5s \
+            --health-timeout=2s \
+            --health-retries=30 \
             mysql:8.0-debian
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -49,8 +53,11 @@ jobs:
 
       - name: Setup test config file
         run: |
-          cp tests/config/app.test.cfg src/instance/app.cfg
+          cp ${{ github.workspace }}/tests/config/app.test.cfg ${{ github.workspace }}/src/instance/app.cfg
 
       - name: Test with pytest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           pytest
