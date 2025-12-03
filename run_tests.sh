@@ -32,12 +32,13 @@ cp "$SCRIPT_DIR/sql/uuid-api.sql" "$SCRIPT_DIR/sql/uuid-api.sql.bak"
 # Create a new mysql-test docker container
 echo "Creating a new mysql-test container"
 docker run -d --name mysql-test \
+  --platform linux/amd64 \
   -p 3306:3306 \
   -e MYSQL_DATABASE=sn_uuid \
   -e MYSQL_USER=uuid_user \
   -e MYSQL_PASSWORD=uuid_password \
   -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
-  -v $SCRIPT_DIR/tests/config/uuid-api.sql:/docker-entrypoint-initdb.d/uuid-api.sql:ro \
+  -v $SCRIPT_DIR/sql/uuid-api.sql:/docker-entrypoint-initdb.d/uuid-api.sql:ro \
   -v $SCRIPT_DIR/tests/config/my.cnf:/etc/mysql/my.cnf:ro \
   mysql:8.0-debian
 
