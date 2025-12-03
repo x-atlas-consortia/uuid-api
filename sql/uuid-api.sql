@@ -72,7 +72,7 @@ COLLATE = utf8mb4_0900_ai_ci;
 -- Table `files`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `files` (
-  `UUID` CHAR(32) COLLATE 'Default Collation' NOT NULL,
+  `UUID` CHAR(32) NOT NULL,
   `BASE_DIR` VARCHAR(50) NOT NULL,
   `PATH` MEDIUMTEXT NULL DEFAULT NULL,
   `CHECKSUM` VARCHAR(64) NULL DEFAULT NULL,
