@@ -310,7 +310,7 @@ def test_create_multiple_file_uuids(app, db_session):
 def test_create_uuid_no_write(app, auth):
     """Test that creating a UUID via the POST /uuid endpoint fails without write privileges"""
 
-    auth.write_privs = False
+    auth.uuid_write_privs = False
 
     with app.test_client() as client:
         res = client.post(
