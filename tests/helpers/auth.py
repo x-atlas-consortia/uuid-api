@@ -16,6 +16,7 @@ def auth():
     # By default, tests have read and write privileges, can be overridden in individual tests
     auth_mock.read_privs = True
     auth_mock.write_privs = True
+    auth_mock.uuid_write_privs = True
 
     auth_mock.get_globus_groups_info.return_value = globus_group_info
     auth_mock.getAuthorizationTokens = MagicMock(side_effect=get_authorization_tokens)
@@ -30,6 +31,10 @@ def auth():
     auth_mock.has_write_privs = MagicMock(
         side_effect=lambda token: auth_mock.write_privs if token == AUTH_TOKEN else False
     )
+    auth_mock.has_uuid_write_privs = MagicMock(
+        side_effect=lambda token: auth_mock.uuid_write_privs if token == AUTH_TOKEN else False
+    )
+
 
     with (
         patch("hubmap_commons.hm_auth.AuthHelper.configured_instance", return_value=auth_mock),
