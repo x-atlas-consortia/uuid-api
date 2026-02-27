@@ -131,7 +131,7 @@ POST arguments in json
 # Add backwards compatibility for older version of entity-api
 @app.route('/hmuuid', methods=["POST"])
 @app.route('/uuid', methods=["POST"])
-@secured(has_write=True)
+@secured(has_uuid_write=True)
 def add_uuid():
     global worker
 
