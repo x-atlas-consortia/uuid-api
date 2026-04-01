@@ -1,4 +1,5 @@
 import hashlib
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -37,6 +38,23 @@ def app(auth, db_session):
     # other setup
     yield app_module.app
     # cleanup
+
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_s3_worker():
+    s3_worker_instance = MagicMock()
+    s3_worker_instance.stash_text_as_object.return_value = "test-object-key"
+    s3_worker_instance.create_URL_for_object.return_value = "https://example.test/test-object-key"
+
+    with patch("hubmap_commons.S3_worker.S3Worker", return_value=s3_worker_instance):
+        yield s3_worker_instance
+
+
+@pytest.fixture(autouse=True)
+def reset_s3_worker_mock(mock_s3_worker):
+    # Reset the mock call counts and return values before each test
+    mock_s3_worker.reset_mock()
+    yield mock_s3_worker
 
 
 @pytest.fixture(scope="session", autouse=True)
