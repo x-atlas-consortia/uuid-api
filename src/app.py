@@ -49,6 +49,7 @@ except Exception as e:
     print("Error instantiating a UUIDWorker during startup.")
     print(str(e))
     logger.error(e, exc_info=True)
+    raise Exception(f"Failed to instantiate a UUIDWorker during startup: {str(e)}")
 
 logger.info('')
 logger.info('')
