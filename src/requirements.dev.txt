@@ -1,2 +1,2 @@
 # For testing
-pytest>=7.4.4,<8.0
+pytest>=9.0.3,<10.0
